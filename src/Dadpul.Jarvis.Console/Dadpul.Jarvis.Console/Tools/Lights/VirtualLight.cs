@@ -1,16 +1,26 @@
-﻿namespace Dadpul.Jarvis.Console.Tools.Lights;
+﻿// Bonjour
+
+namespace Dadpul.Jarvis.Console.Tools.Lights;
 
 internal sealed class VirtualLight
 {
-    public bool IsOn { get; private set; } = true;
+   #region Public Properties
 
-    public void TurnOn()
-    {
-        IsOn = true;
-    }
+   public bool IsOn { get; private set; } = true;
 
-    public void TurnOff()
-    {
-        IsOn = false;
-    }
+   #endregion
+
+   #region Public Methods and Operators
+
+   public void TurnOff()
+   {
+      IsOn = false;
+   }
+
+   public void TurnOn()
+   {
+      IsOn = true;
+   }
+
+   #endregion
 }

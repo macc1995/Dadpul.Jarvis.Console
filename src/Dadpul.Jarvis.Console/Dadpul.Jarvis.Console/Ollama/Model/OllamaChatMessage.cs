@@ -1,20 +1,24 @@
-﻿using System.Text.Json.Serialization;
+﻿// Bonjour
 
 namespace Dadpul.Jarvis.Console.Ollama.Model;
 
+using System.Text.Json.Serialization;
+
 internal sealed class OllamaChatMessage
 {
-    [JsonPropertyName("role")]
-    public required string Role { get; init; }
+   #region Public Properties
 
-    [JsonPropertyName("content")]
-    public string Content { get; init; } = string.Empty;
+   [JsonPropertyName("content")] public string Content { get; init; } = string.Empty;
 
-    [JsonPropertyName("tool_calls")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IReadOnlyList<OllamaToolCall>? ToolCalls { get; init; }
+   [JsonPropertyName("role")] public required string Role { get; init; }
 
-    [JsonPropertyName("tool_name")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? ToolName { get; init; }
+   [JsonPropertyName("tool_calls")]
+   [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+   public IReadOnlyList<OllamaToolCall>? ToolCalls { get; init; }
+
+   [JsonPropertyName("tool_name")]
+   [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+   public string? ToolName { get; init; }
+
+   #endregion
 }

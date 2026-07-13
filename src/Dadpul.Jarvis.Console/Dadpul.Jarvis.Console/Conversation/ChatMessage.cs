@@ -1,13 +1,8 @@
-﻿using Dadpul.Jarvis.Console.Chat;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿// Bonjour
 
 namespace Dadpul.Jarvis.Console.Conversation
 {
-    internal sealed record ChatMessage(
-    ChatRole Role,
-    string Content,
-    IReadOnlyList<ChatToolCall>? ToolCalls = null,
-    string? ToolName = null);
+   using Dadpul.Jarvis.Console.Chat;
+
+   internal sealed record ChatMessage(ChatRole Role, string Content, IReadOnlyList<ChatToolCall>? ToolCalls = null, string? ToolName = null);
 }

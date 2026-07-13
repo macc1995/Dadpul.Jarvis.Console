@@ -1,133 +1,117 @@
-﻿using Dadpul.Jarvis.Console.Chat;
-using Dadpul.Jarvis.Console.Conversation;
-using Dadpul.Jarvis.Console.Tools;
-using System.Runtime.CompilerServices;
-using System.Text;
+﻿// Bonjour
 
 namespace Dadpul.Jarvis.Console.Application;
 
+using System.Runtime.CompilerServices;
+using System.Text;
+
+using Dadpul.Jarvis.Console.Chat;
+using Dadpul.Jarvis.Console.Conversation;
+using Dadpul.Jarvis.Console.Tools;
+
 internal sealed class ConversationOrchestrator
 {
-    private readonly IChatModel chatModel;
-    private readonly ToolRegistry toolRegistry;
+   #region Constants and Fields
 
-    public ConversationOrchestrator(
-        IChatModel chatModel,
-        ToolRegistry toolRegistry)
-    {
-        this.chatModel = chatModel;
-        this.toolRegistry = toolRegistry;
-    }
+   private readonly IChatModel chatModel;
 
-    public async IAsyncEnumerable<ChatResponseChunk> RespondAsync(
-    ChatConversation conversation,
-    [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        IReadOnlyList<ChatToolDefinition> toolDefinitions =
-            toolRegistry.Tools
-                .Select(ConvertTool)
-                .ToList();
+   private readonly ToolRegistry toolRegistry;
 
-        const int maximumIterations = 10;
+   #endregion
 
-        for (int iteration = 0;
-             iteration < maximumIterations;
-             iteration++)
-        {
-            var assistantContent = new StringBuilder();
-            var toolCalls = new List<ChatToolCall>();
+   #region Constructors and Destructors
 
-            await foreach (ChatResponseChunk chunk
-                           in chatModel.GenerateResponseAsync(
-                               conversation.Messages,
-                               toolDefinitions,
-                               cancellationToken))
+   public ConversationOrchestrator(IChatModel chatModel, ToolRegistry toolRegistry)
+   {
+      this.chatModel = chatModel;
+      this.toolRegistry = toolRegistry;
+   }
+
+   #endregion
+
+   #region Public Methods and Operators
+
+   public async IAsyncEnumerable<ChatResponseChunk> RespondAsync(ChatConversation conversation,
+      [EnumeratorCancellation] CancellationToken cancellationToken)
+   {
+      IReadOnlyList<ChatToolDefinition> toolDefinitions = toolRegistry.Tools.Select(ConvertTool).ToList();
+
+      const int maximumIterations = 10;
+
+      for (var iteration = 0; iteration < maximumIterations; iteration++)
+      {
+         var assistantContent = new StringBuilder();
+         var toolCalls = new List<ChatToolCall>();
+
+         await foreach (var chunk in chatModel.GenerateResponseAsync(conversation.Messages, toolDefinitions, cancellationToken))
+         {
+            if (!string.IsNullOrEmpty(chunk.Content))
             {
-                if (!string.IsNullOrEmpty(chunk.Content))
-                {
-                    assistantContent.Append(chunk.Content);
-                    yield return chunk;
-                }
-
-                if (chunk.ToolCalls.Count > 0)
-                {
-                    toolCalls.AddRange(chunk.ToolCalls);
-                }
-
-                if (chunk.Metrics is not null)
-                {
-                    yield return chunk;
-                }
+               assistantContent.Append(chunk.Content);
+               yield return chunk;
             }
 
-            if (toolCalls.Count == 0)
+            if (chunk.ToolCalls.Count > 0)
             {
-                yield break;
+               toolCalls.AddRange(chunk.ToolCalls);
             }
 
-            conversation.AddAssistantToolCallMessage(
-                assistantContent.ToString(),
-                toolCalls);
-
-            foreach (ChatToolCall toolCall in toolCalls)
+            if (chunk.Metrics is not null)
             {
-                ToolResult result = await ExecuteToolAsync(
-                    toolCall,
-                    cancellationToken);
-
-                conversation.AddToolResultMessage(
-                    toolCall.Name,
-                    result.Content);
+               yield return chunk;
             }
-        }
+         }
 
-        throw new InvalidOperationException(
-            $"The model exceeded the maximum of " +
-            $"{maximumIterations} tool-call iterations.");
-    }
+         if (toolCalls.Count == 0)
+         {
+            yield break;
+         }
 
-    private async Task<ToolResult> ExecuteToolAsync(
-    ChatToolCall toolCall,
-    CancellationToken cancellationToken)
-    {
-        System.Console.WriteLine();
-        System.Console.WriteLine(
-            $"[Executing tool: {toolCall.Name}]");
+         conversation.AddAssistantToolCallMessage(assistantContent.ToString(), toolCalls);
 
-        if (!toolRegistry.TryGet(
-                toolCall.Name,
-                out ITool? tool) ||
-            tool is null)
-        {
-            return ToolResult.Failed(
-                $"The requested tool '{toolCall.Name}' does not exist.");
-        }
+         foreach (var toolCall in toolCalls)
+         {
+            var result = await ExecuteToolAsync(toolCall, cancellationToken);
 
-        try
-        {
-            return await tool.ExecuteAsync(
-                toolCall.Arguments,
-                cancellationToken);
-        }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            return ToolResult.Failed(
-                $"Tool execution failed: {exception.Message}");
-        }
-    }
+            conversation.AddToolResultMessage(toolCall.Name, result.Content);
+         }
+      }
 
-    private static ChatToolDefinition ConvertTool(ITool tool)
-    {
-        return new ChatToolDefinition
-        {
-            Name = tool.Name,
-            Description = tool.Description,
-            Parameters = tool.Parameters
-        };
-    }
+      throw new InvalidOperationException($"The model exceeded the maximum of " + $"{maximumIterations} tool-call iterations.");
+   }
+
+   #endregion
+
+   #region Methods
+
+   private static ChatToolDefinition ConvertTool(ITool tool)
+   {
+      return new ChatToolDefinition { Name = tool.Name, Description = tool.Description, Parameters = tool.Parameters };
+   }
+
+   private async Task<ToolResult> ExecuteToolAsync(ChatToolCall toolCall, CancellationToken cancellationToken)
+   {
+      System.Console.WriteLine();
+      System.Console.WriteLine($"[Executing tool: {toolCall.Name}]");
+
+      if (!toolRegistry.TryGet(toolCall.Name, out var tool) || tool is null)
+      {
+         return ToolResult.Failed($"The requested tool '{toolCall.Name}' does not exist.");
+      }
+
+      try
+      {
+         return await tool.ExecuteAsync(toolCall.Arguments, cancellationToken);
+      }
+      catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+      {
+         throw;
+      }
+      catch (Exception exception)
+      {
+         return ToolResult.Failed($"Tool execution failed: {exception.Message}");
+      }
+   }
+
+   #endregion
 }

@@ -1,54 +1,45 @@
-﻿
-using Dadpul.Jarvis.Console.Application;
-using Dadpul.Jarvis.Console.Application.Prompts;
-using Dadpul.Jarvis.Console.Chat;
-using Dadpul.Jarvis.Console.Conversation;
-using Dadpul.Jarvis.Console.Ollama;
-using Dadpul.Jarvis.Console.Tools;
-using Dadpul.Jarvis.Console.Tools.Lights;
-using Jarvis.Console.Ollama;
-using System;
+﻿// Bonjour
+
 namespace Dadpul.Jarvis.Console
 {
-    internal class Program
-    {
-        static async Task Main(string[] args)
-        {
-            System.Console.InputEncoding = System.Text.Encoding.UTF8;
-            System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+   using Dadpul.Jarvis.Console.Application;
+   using Dadpul.Jarvis.Console.Application.Prompts;
+   using Dadpul.Jarvis.Console.Chat;
+   using Dadpul.Jarvis.Console.Conversation;
+   using Dadpul.Jarvis.Console.Ollama;
+   using Dadpul.Jarvis.Console.Tools;
+   using Dadpul.Jarvis.Console.Tools.Lights;
 
-            var conversation = new ChatConversation();
-            conversation.AddSystemMessage(JarvisSystemPrompt.Content);
-            var ollamaOptions = new OllamaOptions
-            {
-                BaseAddress = new Uri("http://localhost:11434"),
-                Model = "qwen3:8b"
-            };
+   internal class Program
+   {
+      #region Methods
 
-            using var httpClient = new HttpClient
-            {
-                BaseAddress = ollamaOptions.BaseAddress
-            };
+      static async Task Main(string[] args)
+      {
+         System.Console.InputEncoding = System.Text.Encoding.UTF8;
+         System.Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-            IChatModel chatModel = new OllamaChatModel(
-                httpClient,
-                ollamaOptions);
+         var conversation = new ChatConversation();
+         conversation.AddSystemMessage(JarvisSystemPrompt.Content);
+         var ollamaOptions = new OllamaOptions { BaseAddress = new Uri("http://localhost:11434"), Model = "qwen3:8b" };
 
+         using var httpClient = new HttpClient { BaseAddress = ollamaOptions.BaseAddress };
 
-            var registry = new ToolRegistry();
-            var lights = new VirtualLight();
-            var lightsOffTool = new TurnOffLightTool(lights);
+         IChatModel chatModel = new OllamaChatModel(httpClient, ollamaOptions);
 
-            registry.Register(lightsOffTool);
+         var registry = new ToolRegistry();
+         var lights = new VirtualLight();
+         var lightsOffTool = new TurnOffLightTool(lights);
 
-            var orchestrator = new ConversationOrchestrator(
-    chatModel, registry);
+         registry.Register(lightsOffTool);
 
-            var app = new JarvisConsoleApplication(
-                conversation,
-                orchestrator);
+         var orchestrator = new ConversationOrchestrator(chatModel, registry);
 
-            await app.RunAsync(CancellationToken.None);
-        }
-    }
+         var app = new JarvisConsoleApplication(conversation, orchestrator);
+
+         await app.RunAsync(CancellationToken.None);
+      }
+
+      #endregion
+   }
 }

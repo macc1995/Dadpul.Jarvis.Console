@@ -1,26 +1,32 @@
-﻿using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
+﻿// Bonjour
 
 namespace Dadpul.Jarvis.Console.Ollama.Model;
 
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+
 internal sealed class OllamaToolCall
 {
-    [JsonPropertyName("type")]
-    public string Type { get; init; } = "function";
+   #region Public Properties
 
-    [JsonPropertyName("function")]
-    public required OllamaCalledFunction Function { get; init; }
+   [JsonPropertyName("function")] public required OllamaCalledFunction Function { get; init; }
+
+   [JsonPropertyName("type")] public string Type { get; init; } = "function";
+
+   #endregion
 }
 
 internal sealed class OllamaCalledFunction
 {
-    [JsonPropertyName("index")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? Index { get; init; }
+   #region Public Properties
 
-    [JsonPropertyName("name")]
-    public required string Name { get; init; }
+   [JsonPropertyName("arguments")] public JsonObject Arguments { get; init; } = new();
 
-    [JsonPropertyName("arguments")]
-    public JsonObject Arguments { get; init; } = new();
+   [JsonPropertyName("index")]
+   [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+   public int? Index { get; init; }
+
+   [JsonPropertyName("name")] public required string Name { get; init; }
+
+   #endregion
 }

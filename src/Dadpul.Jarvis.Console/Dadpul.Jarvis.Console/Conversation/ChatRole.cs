@@ -1,9 +1,14 @@
-﻿namespace Dadpul.Jarvis.Console.Conversation;
+﻿// Bonjour
+
+namespace Dadpul.Jarvis.Console.Conversation;
 
 internal enum ChatRole
 {
-    System,
-    User,
-    Assistant,
-    Tool
+   System,
+
+   User,
+
+   Assistant,
+
+   Tool
 }

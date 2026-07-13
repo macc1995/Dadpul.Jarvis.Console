@@ -1,16 +1,24 @@
-﻿using System.Text.Json.Nodes;
+﻿// Bonjour
 
 namespace Dadpul.Jarvis.Console.Tools;
 
+using System.Text.Json.Nodes;
+
 internal interface ITool
 {
-    string Name { get; }
+   #region Public Properties
 
-    string Description { get; }
+   string Description { get; }
 
-    JsonObject Parameters { get; }
+   string Name { get; }
 
-    Task<ToolResult> ExecuteAsync(
-        JsonObject arguments,
-        CancellationToken cancellationToken);
+   JsonObject Parameters { get; }
+
+   #endregion
+
+   #region Public Methods and Operators
+
+   Task<ToolResult> ExecuteAsync(JsonObject arguments, CancellationToken cancellationToken);
+
+   #endregion
 }

@@ -1,37 +1,41 @@
-﻿using System.Text.Json.Nodes;
+﻿// Bonjour
 
 namespace Dadpul.Jarvis.Console.Tools.Lights;
 
+using System.Text.Json.Nodes;
+
 internal sealed class TurnOffLightTool : ITool
 {
-    private readonly VirtualLight light;
+   #region Constants and Fields
 
-    public TurnOffLightTool(VirtualLight light)
-    {
-        this.light = light;
-    }
+   private readonly VirtualLight light;
 
-    public string Name => "light_turn_off";
+   #endregion
 
-    public string Description =>
-        "Turns off the virtual room light. Use this when the user asks " +
-        "to turn off, disable, darken, or otherwise stop the light.";
+   #region Constructors and Destructors
 
-    public JsonObject Parameters => new()
-    {
-        ["type"] = "object",
-        ["properties"] = new JsonObject(),
-        ["required"] = new JsonArray()
-    };
+   public TurnOffLightTool(VirtualLight light)
+   {
+      this.light = light;
+   }
 
-    public Task<ToolResult> ExecuteAsync(
-        JsonObject arguments,
-        CancellationToken cancellationToken)
-    {
-        light.TurnOff();
+   #endregion
 
-        return Task.FromResult(
-            ToolResult.Successful(
-                "The virtual light is now off."));
-    }
+   #region ITool Members
+
+   public string Name => "light_turn_off";
+
+   public string Description =>
+      "Turns off the virtual room light. Use this when the user asks " + "to turn off, disable, darken, or otherwise stop the light.";
+
+   public JsonObject Parameters => new() { ["type"] = "object", ["properties"] = new JsonObject(), ["required"] = new JsonArray() };
+
+   public Task<ToolResult> ExecuteAsync(JsonObject arguments, CancellationToken cancellationToken)
+   {
+      light.TurnOff();
+
+      return Task.FromResult(ToolResult.Successful("The virtual light is now off."));
+   }
+
+   #endregion
 }

@@ -1,12 +1,18 @@
-﻿using System.Text.Json.Nodes;
+﻿// Bonjour
 
 namespace Dadpul.Jarvis.Console.Chat;
 
+using System.Text.Json.Nodes;
+
 internal sealed class ChatToolDefinition
 {
-    public required string Name { get; init; }
+   #region Public Properties
 
-    public required string Description { get; init; }
+   public required string Description { get; init; }
 
-    public required JsonObject Parameters { get; init; }
+   public required string Name { get; init; }
+
+   public required JsonObject Parameters { get; init; }
+
+   #endregion
 }
