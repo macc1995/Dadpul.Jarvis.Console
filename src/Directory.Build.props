@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+	<SharedOutputFolder>$(MSBuildThisFileDirectory)artifacts\bin\</SharedOutputFolder>
+	<OutputPath>$(SharedOutputFolder)</OutputPath>
+	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+</Project>

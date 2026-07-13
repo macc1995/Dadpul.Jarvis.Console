@@ -1,10 +1,10 @@
 ﻿// Bonjour
 
-namespace Dadpul.Jarvis.Console.Tools;
+namespace Dadpul.Jarvis.Interfaces.Tools;
 
 using System.Text.Json.Nodes;
 
-internal interface ITool
+public interface ITool
 {
    #region Public Properties
 

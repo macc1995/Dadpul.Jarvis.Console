@@ -1,8 +1,8 @@
 ﻿// Bonjour
 
-namespace Dadpul.Jarvis.Console.Tools;
+namespace Dadpul.Jarvis.Interfaces.Tools;
 
-internal sealed class ToolResult
+public sealed class ToolResult
 {
    #region Public Properties
 

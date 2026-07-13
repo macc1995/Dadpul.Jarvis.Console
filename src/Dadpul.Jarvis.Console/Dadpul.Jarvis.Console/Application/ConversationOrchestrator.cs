@@ -8,6 +8,7 @@ using System.Text;
 using Dadpul.Jarvis.Console.Chat;
 using Dadpul.Jarvis.Console.Conversation;
 using Dadpul.Jarvis.Console.Tools;
+using Dadpul.Jarvis.Interfaces.Tools;
 
 internal sealed class ConversationOrchestrator
 {
@@ -15,13 +16,13 @@ internal sealed class ConversationOrchestrator
 
    private readonly IChatModel chatModel;
 
-   private readonly ToolRegistry toolRegistry;
+   private readonly IToolRegistry toolRegistry;
 
    #endregion
 
    #region Constructors and Destructors
 
-   public ConversationOrchestrator(IChatModel chatModel, ToolRegistry toolRegistry)
+   public ConversationOrchestrator(IChatModel chatModel, IToolRegistry toolRegistry)
    {
       this.chatModel = chatModel;
       this.toolRegistry = toolRegistry;

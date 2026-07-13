@@ -2,7 +2,12 @@
 
 namespace Dadpul.Jarvis.Console.Tools;
 
-internal sealed class ToolRegistry
+using System.ComponentModel.Composition;
+
+using Dadpul.Jarvis.Interfaces.Tools;
+
+[Export(typeof(IToolRegistry))]
+internal sealed class ToolRegistry : IToolRegistry
 {
    #region Constants and Fields
 
@@ -10,13 +15,7 @@ internal sealed class ToolRegistry
 
    #endregion
 
-   #region Public Properties
-
-   public IReadOnlyCollection<ITool> Tools => tools.Values;
-
-   #endregion
-
-   #region Public Methods and Operators
+   #region IToolRegistry Members
 
    public void Register(ITool tool)
    {
@@ -28,10 +27,29 @@ internal sealed class ToolRegistry
       }
    }
 
+   public IReadOnlyCollection<ITool> Tools => tools.Values;
+
    public bool TryGet(string name, out ITool? tool)
    {
       return tools.TryGetValue(name, out tool);
    }
+
+   #endregion
+}
+
+public interface IToolRegistry
+{
+   #region Public Properties
+
+   IReadOnlyCollection<ITool> Tools { get; }
+
+   #endregion
+
+   #region Public Methods and Operators
+
+   void Register(ITool tool);
+
+   bool TryGet(string name, out ITool? tool);
 
    #endregion
 }
