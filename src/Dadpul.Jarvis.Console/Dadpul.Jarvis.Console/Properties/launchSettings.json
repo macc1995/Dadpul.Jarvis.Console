@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Dadpul.Jarvis.Console": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
