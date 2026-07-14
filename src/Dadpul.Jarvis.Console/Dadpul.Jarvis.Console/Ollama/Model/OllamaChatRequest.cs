@@ -14,6 +14,8 @@ internal sealed class OllamaChatRequest
 
    [JsonPropertyName("stream")] public bool Stream { get; init; }
 
+   [JsonPropertyName("think")] public bool Think { get; init; }
+
    [JsonPropertyName("tools")] public IReadOnlyList<OllamaToolDefinition>? Tools { get; init; }
 
    #endregion

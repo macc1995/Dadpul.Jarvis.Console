@@ -12,16 +12,19 @@ internal sealed class MemoryTool : ITool
 {
    #region Constants and Fields
 
-   private readonly IMemoryStore memoryStore;
+   private readonly IMemoryRetriever memoryRetriever;
+
+   private readonly IMemoryService memoryService;
 
    #endregion
 
    #region Constructors and Destructors
 
    [ImportingConstructor]
-   public MemoryTool(IMemoryStore memoryStore)
+   public MemoryTool(IMemoryService memoryService, IMemoryRetriever memoryRetriever)
    {
-      this.memoryStore = memoryStore;
+      this.memoryService = memoryService;
+      this.memoryRetriever = memoryRetriever;
    }
 
    #endregion
@@ -32,7 +35,8 @@ internal sealed class MemoryTool : ITool
 
    public string Description =>
       "Stores, searches, or deletes persistent user memories. " + "Use this when the user explicitly asks to remember, recall, or forget "
-                                                                + "information. Do not claim a memory was stored unless this tool succeeds.";
+                                                                + "information. Do not claim a memory was stored unless this tool succeeds."
+                                                                + "User 'remember' operation to store memories, 'search' operation to recall memories, and 'forget' operation to delete memories.";
 
    public JsonObject Parameters =>
       new()
@@ -76,6 +80,20 @@ internal sealed class MemoryTool : ITool
 
    #region Methods
 
+   private static string BuildAmbiguousResult(IReadOnlyList<MemoryMatch> candidates)
+   {
+      var candidateText = string.Join(Environment.NewLine, candidates.Select(match => $"- {match.Memory.Content}"));
+
+      return $"""
+              Multiple memories matched the request and none was clearly best.
+
+              Candidates:
+              {candidateText}
+
+              Ask the user to clarify which memory should be forgotten.
+              """;
+   }
+
    private static bool TryGetString(JsonObject arguments, string propertyName, out string? value)
    {
       value = null;
@@ -85,68 +103,67 @@ internal sealed class MemoryTool : ITool
 
    private async Task<ToolResult> ForgetAsync(JsonObject arguments, CancellationToken cancellationToken)
    {
-      var memoryIdValue = arguments["memoryId"]?.GetValue<string>();
-
-      if (string.IsNullOrWhiteSpace(memoryIdValue))
+      if (!TryGetString(arguments, "query", out var query) || string.IsNullOrWhiteSpace(query))
       {
-         return ToolResult.Failed("The 'memoryId' argument is required when forgetting a memory.");
+         return ToolResult.Failed("The required string argument 'query' was missing or invalid.");
       }
 
-      if (!Guid.TryParse(memoryIdValue, out var memoryId))
+      var result = await memoryService.ForgetAsync(query.Trim(), cancellationToken);
+
+      return result.Status switch
       {
-         return ToolResult.Failed($"'{memoryIdValue}' is not a valid memory ID.");
-      }
+         ForgetMemoryStatus.Deleted => ToolResult.Successful($"""
+                                                              Memory deleted successfully.
 
-      var deleted = await memoryStore.DeleteAsync(memoryId, cancellationToken);
+                                                              Deleted content: {result.DeletedMemory!.Content}
+                                                              """),
 
-      if (!deleted)
-      {
-         return ToolResult.Failed($"No memory with ID '{memoryId}' was found.");
-      }
+         ForgetMemoryStatus.NotFound => ToolResult.Failed("No memory matched the request confidently enough to delete."),
 
-      return ToolResult.Successful($"Memory '{memoryId}' was deleted successfully.");
+         ForgetMemoryStatus.Ambiguous => ToolResult.Failed(BuildAmbiguousResult(result.Candidates)),
+
+         _ => throw new ArgumentOutOfRangeException(nameof(result.Status), result.Status, "Unsupported forget-memory status.")
+      };
    }
 
    private async Task<ToolResult> RememberAsync(JsonObject arguments, CancellationToken cancellationToken)
    {
-      var content = arguments["content"]?.GetValue<string>();
-
-      if (string.IsNullOrWhiteSpace(content))
+      if (!TryGetString(arguments, "content", out var content) || string.IsNullOrWhiteSpace(content))
       {
-         return ToolResult.Failed("The 'content' argument is required when remembering something.");
+         return ToolResult.Failed("The required string argument 'content' was missing or invalid.");
       }
 
-      var memory = await memoryStore.StoreAsync(content.Trim(), cancellationToken);
+      var memory = await memoryService.RememberAsync(content.Trim(), cancellationToken);
 
       return ToolResult.Successful($"""
                                     Memory stored successfully.
 
-                                    Memory ID: {memory.Id}
                                     Content: {memory.Content}
                                     """);
    }
 
    private async Task<ToolResult> SearchAsync(JsonObject arguments, CancellationToken cancellationToken)
    {
-      var query = arguments["query"]?.GetValue<string>();
-
-      if (string.IsNullOrWhiteSpace(query))
+      if (!TryGetString(arguments, "query", out var query) || string.IsNullOrWhiteSpace(query))
       {
-         return ToolResult.Failed("The 'query' argument is required when searching memories.");
+         return ToolResult.Failed("The required string argument 'query' was missing or invalid.");
       }
 
-      var memories = await memoryStore.SearchAsync(query.Trim(), cancellationToken);
+      var matches = await memoryRetriever.RetrieveAsync(query.Trim(), cancellationToken);
 
-      if (memories.Count == 0)
+      if (matches.Count == 0)
       {
-         return ToolResult.Successful("No matching memories were found.");
+         return ToolResult.Successful("No relevant memories were found.");
       }
 
-      var formattedMemories = string.Join(Environment.NewLine,
-         memories.Select(memory => $"- ID: {memory.Id}{Environment.NewLine}" + $"  Content: {memory.Content}"));
+      var formattedMemories = string.Join(Environment.NewLine, matches.Select(match => $"""
+                                                                                        - Memory ID: {match.Memory.Id}
+                                                                                          Similarity: {match.Similarity:F4}
+                                                                                          Content: {match.Memory.Content}
+                                                                                        """));
 
       return ToolResult.Successful($"""
-                                    Matching memories:
+                                    Relevant memories:
 
                                     {formattedMemories}
                                     """);

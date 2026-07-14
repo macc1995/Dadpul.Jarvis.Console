@@ -12,13 +12,13 @@ internal sealed class JarvisConsoleApplication
 
    private readonly ChatConversation conversation;
 
-   private readonly ConversationOrchestrator orchestrator;
+   private readonly IConversationOrchestrator orchestrator;
 
    #endregion
 
    #region Constructors and Destructors
 
-   public JarvisConsoleApplication(ChatConversation conversation, ConversationOrchestrator orchestrator)
+   public JarvisConsoleApplication(ChatConversation conversation, IConversationOrchestrator orchestrator)
    {
       this.conversation = conversation;
       this.orchestrator = orchestrator;

@@ -38,7 +38,11 @@ internal sealed class OllamaChatModel : IChatModel
    {
       var requestBody = new OllamaChatRequest
       {
-         Model = options.Model, Messages = messages.Select(ConvertMessage).ToList(), Tools = tools.Select(ConvertTool).ToList(), Stream = true
+         Model = options.Model,
+         Messages = messages.Select(ConvertMessage).ToList(),
+         Tools = tools.Select(ConvertTool).ToList(),
+         Stream = true,
+         Think = options.Think
       };
 
       using var request = new HttpRequestMessage(HttpMethod.Post, "api/chat") { Content = JsonContent.Create(requestBody) };
