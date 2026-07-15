@@ -1,4 +1,4 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Console
 {
@@ -8,7 +8,7 @@ namespace Dadpul.Jarvis.Console
    using System.Reflection;
 
    using Dadpul.Jarvis.Console.Application;
-   using Dadpul.Jarvis.Console.Application.Prompts;
+   using Dadpul.Jarvis.Console.Application.Propmpts;
    using Dadpul.Jarvis.Console.Chat;
    using Dadpul.Jarvis.Console.Conversation;
    using Dadpul.Jarvis.Console.Ollama;
@@ -57,7 +57,7 @@ namespace Dadpul.Jarvis.Console
          conversation.AddSystemMessage(JarvisSystemPrompt.Content);
          var ollamaOptions = new OllamaOptions
          {
-            BaseAddress = new Uri("http://192.168.0.70:11434"),
+            BaseAddress = new Uri("http://192.168.0.69:11434"),
             Model = "qwen3:4b-instruct-2507-q4_K_M",
             Think = false,
             EmbeddingModel = "embeddinggemma"
@@ -70,9 +70,8 @@ namespace Dadpul.Jarvis.Console
          var assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
                                  ?? throw new InvalidOperationException("Unable to resolve application directory.");
 
-         //using var container = new AggregateCatalog(new AssemblyCatalog(Assembly.GetExecutingAssembly()),
-         // new DirectoryCatalog(assemblyDirectory, "Dadpul.Jarvis.Tools.*.dll"));
-         using var container = new AggregateCatalog(new DirectoryCatalog(assemblyDirectory));
+         using var container = new AggregateCatalog(new AssemblyCatalog(Assembly.GetExecutingAssembly()),
+            new DirectoryCatalog(assemblyDirectory, "Dadpul.Jarvis.Tools.*.dll"));
          using var catalog = new CompositionContainer(container);
          var compositionBatch = new CompositionBatch();
          compositionBatch.AddExportedValue(chatModel);
@@ -84,7 +83,7 @@ namespace Dadpul.Jarvis.Console
 
          foreach (var tool in catalog.GetExportedValues<ITool>())
          {
-            Console.WriteLine($"registering {tool.Name}");
+            Console.WriteLine($"registering {tool.Name} {tool.Version}");
             registry.Register(tool);
          }
 
@@ -106,7 +105,7 @@ namespace Dadpul.Jarvis.Console
 
          var orchestrator = catalog.GetExportedValue<IConversationOrchestrator>();
          var app = new JarvisConsoleApplication(conversation, orchestrator);
-         await PreloadModelAsync(httpClient, "qwen3:4b", CancellationToken.None);
+         await PreloadModelAsync(httpClient, "qwen3:4b-instruct-2507-q4_K_M", CancellationToken.None);
          //await PreloadModelAsync(httpClient, "embeddinggemma", CancellationToken.None);
          await app.RunAsync(CancellationToken.None);
       }
@@ -119,7 +118,7 @@ namespace Dadpul.Jarvis.Console
          }
 
          using var response = await httpClient.PostAsJsonAsync(
-            "http://192.168.0.70:11434/api/generate", new { model, keep_alive = -1 }, cancellationToken);
+            "http://192.168.0.69:11434/api/generate", new { model, keep_alive = -1 }, cancellationToken);
 
          var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 

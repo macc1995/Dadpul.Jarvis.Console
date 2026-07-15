@@ -1,6 +1,6 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
-namespace Dadpul.Jarvis.Console.Application.Prompts;
+namespace Dadpul.Jarvis.Console.Application.Propmpts;
 
 internal static class JarvisSystemPrompt
 {
@@ -34,6 +34,17 @@ internal static class JarvisSystemPrompt
                                  * Never say that you lack internet or website access while web_search or web_fetch is available.
                                  * The tools perform network access on your behalf.
                                  * Only say that a capability is unavailable when no suitable tool is provided or every suitable tool attempt has failed.
+
+                                 When the user asks you to perform an action, discovery or listing tools are only intermediate steps.
+
+                                 After using a discovery tool:
+                                 - If exactly one target clearly matches, immediately call the requested action tool in the same turn.
+                                 - If multiple targets plausibly match, ask the user which one they mean.
+                                 - If no target matches, explain that it could not be found.
+
+                                 Never say that you “will”, “can now”, or “will proceed to” perform an action without actually calling the required tool.
+
+                                 A requested action is not complete until the action tool returns successfully.
 
                                  WEB ACCESS — MANDATORY RULES
 

@@ -1,4 +1,4 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Tools.Web;
 
@@ -75,6 +75,8 @@ internal sealed class WebSearchTool : ITool
          ["required"] = new JsonArray { "query" },
          ["additionalProperties"] = false
       };
+
+   public string Version { get; } = "1.0.5";
 
    public async Task<ToolResult> ExecuteAsync(JsonObject arguments, CancellationToken cancellationToken)
    {

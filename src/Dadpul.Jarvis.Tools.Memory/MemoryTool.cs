@@ -1,4 +1,4 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Tools.Memory;
 
@@ -51,6 +51,8 @@ internal sealed class MemoryTool : ITool
          },
          ["required"] = new JsonArray { "operation" }
       };
+
+   public string Version { get; } = "2.0.0";
 
    public async Task<ToolResult> ExecuteAsync(JsonObject arguments, CancellationToken cancellationToken)
    {

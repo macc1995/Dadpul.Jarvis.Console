@@ -1,4 +1,4 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Embeddings;
 
@@ -9,11 +9,4 @@ public interface IEmbeddingGenerator
    Task<float[]> GenerateAsync(string input, EmbeddingInputType inputType, CancellationToken cancellationToken);
 
    #endregion
-}
-
-public enum EmbeddingInputType
-{
-   Query,
-
-   Document
 }

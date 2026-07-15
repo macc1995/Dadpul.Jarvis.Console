@@ -1,9 +1,10 @@
-﻿// Bonjour
+﻿// Made by Dadpul
+
+namespace Dadpul.Jarvis.Tools.Memory;
 
 using System.ComponentModel.Composition;
 
 using Dadpul.Jarvis.Embeddings;
-using Dadpul.Jarvis.Tools.Memory;
 
 [Export(typeof(IMemoryService))]
 public sealed class MemoryService : IMemoryService
@@ -40,7 +41,7 @@ public sealed class MemoryService : IMemoryService
 
    #endregion
 
-   #region Public Methods and Operators
+   #region IMemoryService Members
 
    public async Task<ForgetMemoryResult> ForgetAsync(string query, CancellationToken cancellationToken)
    {
@@ -112,45 +113,4 @@ public sealed class MemoryService : IMemoryService
    }
 
    #endregion
-}
-
-public sealed class ForgetMemoryResult
-{
-   #region Public Properties
-
-   public IReadOnlyList<MemoryMatch> Candidates { get; init; } = [];
-
-   public MemoryRecord? DeletedMemory { get; init; }
-
-   public required ForgetMemoryStatus Status { get; init; }
-
-   #endregion
-
-   #region Public Methods and Operators
-
-   public static ForgetMemoryResult Ambiguous(IReadOnlyList<MemoryMatch> candidates)
-   {
-      return new ForgetMemoryResult { Status = ForgetMemoryStatus.Ambiguous, Candidates = candidates };
-   }
-
-   public static ForgetMemoryResult Deleted(MemoryRecord memory)
-   {
-      return new ForgetMemoryResult { Status = ForgetMemoryStatus.Deleted, DeletedMemory = memory };
-   }
-
-   public static ForgetMemoryResult NotFound()
-   {
-      return new ForgetMemoryResult { Status = ForgetMemoryStatus.NotFound };
-   }
-
-   #endregion
-}
-
-public enum ForgetMemoryStatus
-{
-   Deleted,
-
-   NotFound,
-
-   Ambiguous
 }

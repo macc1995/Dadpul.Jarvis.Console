@@ -1,10 +1,11 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Console.Ollama;
 
 using System.Composition;
 using System.Net.Http.Json;
 
+using Dadpul.Jarvis.Console.Ollama.Model;
 using Dadpul.Jarvis.Embeddings;
 
 [Export(typeof(IEmbeddingGenerator))]

@@ -1,3 +1,15 @@
 <Solution>
+  <Folder Name="/Docker/">
+    <Project Path="../Dadpul.Jarvis.Docker.Agent/Dadpul.Jarvis.Docker.Agent.csproj" Id="f1bc3e47-1c8a-46b0-bedc-6c7df05e35d9" />
+    <Project Path="../Dadpul.Jarvis.Docker.Contracts/Dadpul.Jarvis.Docker.Contracts.csproj" Id="c8551b83-201b-4742-876c-f0377d63b879" />
+  </Folder>
+  <Folder Name="/Tools/">
+    <Project Path="../Dadpul.Jarvis.Tools.Docker/Dadpul.Jarvis.Tools.Docker.csproj" Id="a9b1e9f1-6d27-4369-84bd-988f2d83435d" />
+    <Project Path="../Dadpul.Jarvis.Tools.Lights/Dadpul.Jarvis.Tools.Lights.csproj" Id="6b8ea339-8428-4eaa-a190-a688946787c5" />
+    <Project Path="../Dadpul.Jarvis.Tools.Memory/Dadpul.Jarvis.Tools.Memory.csproj" Id="4f28d4d4-d82e-49dc-9da7-c75791413fcd" />
+    <Project Path="../Dadpul.Jarvis.Tools.WebSearch/Dadpul.Jarvis.Tools.WebSearch.csproj" Id="aa53b2a5-7a0b-4652-bd36-c2c569b9697d" />
+  </Folder>
   <Project Path="../Dadpul.Jarvis.Console/Dadpul.Jarvis.Console/Dadpul.Jarvis.Console.csproj" />
+  <Project Path="../Dadpul.Jarvis.Embeddings/Dadpul.Jarvis.Embeddings.csproj" Id="a4a86823-16ad-4010-af83-1e614044008d" />
+  <Project Path="../Dadpul.Jarvis.Interfaces/Dadpul.Jarvis.Interfaces.csproj" Id="0a998681-0978-444b-bfd1-b83b76dc38a2" />
 </Solution>

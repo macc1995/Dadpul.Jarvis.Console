@@ -1,78 +1,80 @@
-﻿using Dadpul.Jarvis.Console.Chat;
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Console.Conversation;
 
+using Dadpul.Jarvis.Console.Chat;
+
 internal sealed class ChatConversation
 {
-    private readonly List<ChatMessage> messages = [];
+   #region Constants and Fields
 
-    public IReadOnlyList<ChatMessage> Messages => messages;
+   private readonly List<ChatMessage> messages = [];
 
-    public void AddUserMessage(string content)
-    {
-        AddMessage(ChatRole.User, content);
-    }
+   #endregion
 
-    public void AddAssistantMessage(string content)
-    {
-        AddMessage(ChatRole.Assistant, content);
-    }
-    public void AddAssistantToolCallMessage(
-    string content,
-    IReadOnlyList<ChatToolCall> toolCalls)
-    {
-        ArgumentNullException.ThrowIfNull(toolCalls);
+   #region Public Properties
 
-        if (toolCalls.Count == 0)
-        {
-            throw new ArgumentException(
-                "At least one tool call is required.",
-                nameof(toolCalls));
-        }
+   public IReadOnlyList<ChatMessage> Messages => messages;
 
-        messages.Add(new ChatMessage(
-            ChatRole.Assistant,
-            content,
-            toolCalls));
-    }
+   #endregion
 
-    public void AddToolResultMessage(
-        string toolName,
-        string content)
-    {
-        if (string.IsNullOrWhiteSpace(toolName))
-        {
-            throw new ArgumentException(
-                "A tool name is required.",
-                nameof(toolName));
-        }
+   #region Public Methods and Operators
 
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new ArgumentException(
-                "A tool result cannot be empty.",
-                nameof(content));
-        }
+   public void AddAssistantMessage(string content)
+   {
+      AddMessage(ChatRole.Assistant, content);
+   }
 
-        messages.Add(new ChatMessage(
-            ChatRole.Tool,
-            content.Trim(),
-            ToolName: toolName));
-    }
-    public void AddSystemMessage(string content)
-    {
-        AddMessage(ChatRole.System, content);
-    }
+   public void AddAssistantToolCallMessage(string content, IReadOnlyList<ChatToolCall> toolCalls)
+   {
+      ArgumentNullException.ThrowIfNull(toolCalls);
 
-    private void AddMessage(ChatRole role, string content)
-    {
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new ArgumentException(
-                "A chat message cannot be empty.",
-                nameof(content));
-        }
+      if (toolCalls.Count == 0)
+      {
+         throw new ArgumentException("At least one tool call is required.", nameof(toolCalls));
+      }
 
-        messages.Add(new ChatMessage(role, content.Trim()));
-    }
+      messages.Add(new ChatMessage(ChatRole.Assistant, content, toolCalls));
+   }
+
+   public void AddSystemMessage(string content)
+   {
+      AddMessage(ChatRole.System, content);
+   }
+
+   public void AddToolResultMessage(string toolName, string content)
+   {
+      if (string.IsNullOrWhiteSpace(toolName))
+      {
+         throw new ArgumentException("A tool name is required.", nameof(toolName));
+      }
+
+      if (string.IsNullOrWhiteSpace(content))
+      {
+         throw new ArgumentException("A tool result cannot be empty.", nameof(content));
+      }
+
+      messages.Add(new ChatMessage(ChatRole.Tool, content.Trim(), ToolName: toolName));
+   }
+
+   public void AddUserMessage(string content)
+   {
+      AddMessage(ChatRole.User, content);
+   }
+
+   #endregion
+
+   #region Methods
+
+   private void AddMessage(ChatRole role, string content)
+   {
+      if (string.IsNullOrWhiteSpace(content))
+      {
+         throw new ArgumentException("A chat message cannot be empty.", nameof(content));
+      }
+
+      messages.Add(new ChatMessage(role, content.Trim()));
+   }
+
+   #endregion
 }

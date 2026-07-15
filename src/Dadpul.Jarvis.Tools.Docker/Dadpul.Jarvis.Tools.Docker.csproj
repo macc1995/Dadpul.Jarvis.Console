@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="docker-nodes.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="docker-nodes.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.ComponentModel.Composition" />
+  </ItemGroup>
+
+  <ItemGroup>
+    
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dadpul.Jarvis.Docker.Contracts\Dadpul.Jarvis.Docker.Contracts.csproj" />
+    <ProjectReference Include="..\Dadpul.Jarvis.Interfaces\Dadpul.Jarvis.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

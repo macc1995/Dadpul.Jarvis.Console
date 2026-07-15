@@ -1,12 +1,11 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
-namespace Dadpul.Jarvis.Tools.Web;
+namespace Dadpul.Jarvis.Tools.WebSearch;
 
 using System.ComponentModel.Composition;
 using System.Text.Json.Nodes;
 
 using Dadpul.Jarvis.Interfaces.Tools;
-using Dadpul.Jarvis.Tools.WebSearch;
 
 [Export(typeof(ITool))]
 internal sealed class WebFetchTool : ITool
@@ -47,6 +46,8 @@ internal sealed class WebFetchTool : ITool
          ["required"] = new JsonArray { "url" },
          ["additionalProperties"] = false
       };
+
+   public string Version { get; } = "1.0.5";
 
    public async Task<ToolResult> ExecuteAsync(JsonObject arguments, CancellationToken cancellationToken)
    {

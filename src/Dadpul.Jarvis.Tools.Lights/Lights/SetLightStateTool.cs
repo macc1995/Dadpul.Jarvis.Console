@@ -1,4 +1,4 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Tools.Lights.Lights;
 
@@ -44,6 +44,8 @@ internal sealed class SetLightStateTool : ITool
          },
          ["required"] = new JsonArray { "isOn" }
       };
+
+   public string Version { get; } = "1.0.0";
 
    public Task<ToolResult> ExecuteAsync(JsonObject arguments, CancellationToken cancellationToken)
    {

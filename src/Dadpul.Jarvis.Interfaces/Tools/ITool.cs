@@ -1,4 +1,4 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Interfaces.Tools;
 
@@ -13,6 +13,8 @@ public interface ITool
    string Name { get; }
 
    JsonObject Parameters { get; }
+
+   string Version { get; }
 
    #endregion
 

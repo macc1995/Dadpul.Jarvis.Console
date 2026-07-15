@@ -1,4 +1,4 @@
-﻿// Bonjour
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Console.Tools;
 
@@ -27,29 +27,12 @@ internal sealed class ToolRegistry : IToolRegistry
       }
    }
 
-   public IReadOnlyCollection<ITool> Tools => tools.Values;
-
    public bool TryGet(string name, out ITool? tool)
    {
       return tools.TryGetValue(name, out tool);
    }
 
-   #endregion
-}
-
-public interface IToolRegistry
-{
-   #region Public Properties
-
-   IReadOnlyCollection<ITool> Tools { get; }
-
-   #endregion
-
-   #region Public Methods and Operators
-
-   void Register(ITool tool);
-
-   bool TryGet(string name, out ITool? tool);
+   public IReadOnlyCollection<ITool> Tools => tools.Values;
 
    #endregion
 }
