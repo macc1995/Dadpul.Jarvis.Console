@@ -5,6 +5,7 @@ namespace Dadpul.Jarvis.Tools.Memory;
 using System.ComponentModel.Composition;
 
 using Dadpul.Jarvis.Embeddings;
+using Dadpul.Jarvis.Interfaces.Tools.Memory;
 
 [Export(typeof(IMemoryService))]
 public sealed class MemoryService : IMemoryService
@@ -41,7 +42,7 @@ public sealed class MemoryService : IMemoryService
 
    #endregion
 
-   #region IMemoryService Members
+   #region Public Methods and Operators
 
    public async Task<ForgetMemoryResult> ForgetAsync(string query, CancellationToken cancellationToken)
    {

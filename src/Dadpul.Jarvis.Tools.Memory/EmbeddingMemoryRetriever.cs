@@ -5,6 +5,7 @@ namespace Dadpul.Jarvis.Tools.Memory;
 using System.ComponentModel.Composition;
 
 using Dadpul.Jarvis.Embeddings;
+using Dadpul.Jarvis.Interfaces.Tools.Memory;
 
 [Export(typeof(IMemoryRetriever))]
 public sealed class EmbeddingMemoryRetriever : IMemoryRetriever
@@ -34,7 +35,7 @@ public sealed class EmbeddingMemoryRetriever : IMemoryRetriever
 
    #endregion
 
-   #region IMemoryRetriever Members
+   #region Public Methods and Operators
 
    public async Task<IReadOnlyList<MemoryMatch>> RetrieveAsync(string query, CancellationToken cancellationToken)
    {

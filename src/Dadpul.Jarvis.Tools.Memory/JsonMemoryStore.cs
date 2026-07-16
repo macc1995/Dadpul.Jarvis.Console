@@ -5,6 +5,8 @@ namespace Dadpul.Jarvis.Tools.Memory;
 using System.ComponentModel.Composition;
 using System.Text.Json;
 
+using Dadpul.Jarvis.Interfaces.Tools.Memory;
+
 [Export(typeof(IMemoryStore))]
 internal sealed class JsonMemoryStore : IMemoryStore
 {
@@ -32,45 +34,6 @@ internal sealed class JsonMemoryStore : IMemoryStore
    #endregion
 
    #region IMemoryStore Members
-
-   public async Task StoreAsync(MemoryRecord memory, CancellationToken cancellationToken)
-   {
-      ArgumentNullException.ThrowIfNull(memory);
-
-      await fileLock.WaitAsync(cancellationToken);
-
-      try
-      {
-         var memories = await LoadMemoriesAsync(cancellationToken);
-
-         if (memories.Any(existing => existing.Id == memory.Id))
-         {
-            throw new InvalidOperationException($"A memory with ID '{memory.Id}' already exists.");
-         }
-
-         memories.Add(memory);
-
-         await SaveMemoriesAsync(memories, cancellationToken);
-      }
-      finally
-      {
-         fileLock.Release();
-      }
-   }
-
-   public async Task<IReadOnlyList<MemoryRecord>> GetAllAsync(CancellationToken cancellationToken)
-   {
-      await fileLock.WaitAsync(cancellationToken);
-
-      try
-      {
-         return await LoadMemoriesAsync(cancellationToken);
-      }
-      finally
-      {
-         fileLock.Release();
-      }
-   }
 
    public async Task<bool> DeleteAsync(Guid memoryId, CancellationToken cancellationToken)
    {
@@ -101,6 +64,20 @@ internal sealed class JsonMemoryStore : IMemoryStore
 
    #region Public Methods and Operators
 
+   public async Task<IReadOnlyList<MemoryRecord>> GetAllAsync(CancellationToken cancellationToken)
+   {
+      await fileLock.WaitAsync(cancellationToken);
+
+      try
+      {
+         return await LoadMemoriesAsync(cancellationToken);
+      }
+      finally
+      {
+         fileLock.Release();
+      }
+   }
+
    public async Task<IReadOnlyList<MemoryRecord>> SearchAsync(string query, CancellationToken cancellationToken)
    {
       if (string.IsNullOrWhiteSpace(query))
@@ -116,6 +93,31 @@ internal sealed class JsonMemoryStore : IMemoryStore
 
          return memories.Where(memory => memory.Content.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(memory => memory.UpdatedAt ?? memory.CreatedAt).ToList();
+      }
+      finally
+      {
+         fileLock.Release();
+      }
+   }
+
+   public async Task StoreAsync(MemoryRecord memory, CancellationToken cancellationToken)
+   {
+      ArgumentNullException.ThrowIfNull(memory);
+
+      await fileLock.WaitAsync(cancellationToken);
+
+      try
+      {
+         var memories = await LoadMemoriesAsync(cancellationToken);
+
+         if (memories.Any(existing => existing.Id == memory.Id))
+         {
+            throw new InvalidOperationException($"A memory with ID '{memory.Id}' already exists.");
+         }
+
+         memories.Add(memory);
+
+         await SaveMemoriesAsync(memories, cancellationToken);
       }
       finally
       {

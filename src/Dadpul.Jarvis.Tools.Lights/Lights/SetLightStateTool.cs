@@ -5,7 +5,6 @@ namespace Dadpul.Jarvis.Tools.Lights.Lights;
 using System.ComponentModel.Composition;
 using System.Text.Json.Nodes;
 
-using Dadpul.Jarvis.Console.Tools.Lights;
 using Dadpul.Jarvis.Interfaces.Tools;
 
 [Export(typeof(ITool))]

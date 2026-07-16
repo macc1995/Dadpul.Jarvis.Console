@@ -7,54 +7,48 @@ namespace Dadpul.Jarvis.Console
    using System.Net.Http.Json;
    using System.Reflection;
 
-   using Dadpul.Jarvis.Console.Application;
-   using Dadpul.Jarvis.Console.Application.Propmpts;
-   using Dadpul.Jarvis.Console.Chat;
-   using Dadpul.Jarvis.Console.Conversation;
-   using Dadpul.Jarvis.Console.Ollama;
-   using Dadpul.Jarvis.Console.Tools;
+   using Dadpul.Jarvis.Core.Application;
+   using Dadpul.Jarvis.Core.Application.Propmpts;
+   using Dadpul.Jarvis.Core.Chat;
+   using Dadpul.Jarvis.Core.Conversation;
+   using Dadpul.Jarvis.Core.Ollama;
+   using Dadpul.Jarvis.Discord;
    using Dadpul.Jarvis.Embeddings;
+   using Dadpul.Jarvis.Interfaces.Frontend;
    using Dadpul.Jarvis.Interfaces.Tools;
+
+   using Microsoft.Extensions.Configuration;
 
    using Console = System.Console;
 
-   internal class Program
+   internal static class Program
    {
       #region Methods
 
-      private static float CalculateCosineSimilarity(ReadOnlySpan<float> first, ReadOnlySpan<float> second)
+      private static ChatConversation CreateConversation()
       {
-         if (first.Length != second.Length)
-         {
-            throw new ArgumentException("Embedding dimensions must match.");
-         }
+         var conversation = new ChatConversation();
 
-         double dotProduct = 0;
-         double firstMagnitude = 0;
-         double secondMagnitude = 0;
+         conversation.AddSystemMessage(JarvisSystemPrompt.Content);
 
-         for (var index = 0; index < first.Length; index++)
-         {
-            dotProduct += first[index] * second[index];
-            firstMagnitude += first[index] * first[index];
-            secondMagnitude += second[index] * second[index];
-         }
-
-         if ((firstMagnitude == 0) || (secondMagnitude == 0))
-         {
-            return 0;
-         }
-
-         return (float)(dotProduct / (Math.Sqrt(firstMagnitude) * Math.Sqrt(secondMagnitude)));
+         return conversation;
       }
 
-      static async Task Main(string[] args)
+      private static async Task Main(string[] args)
       {
          Console.InputEncoding = System.Text.Encoding.UTF8;
          Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-         var conversation = new ChatConversation();
-         conversation.AddSystemMessage(JarvisSystemPrompt.Content);
+         var configuration = new ConfigurationBuilder().AddUserSecrets(Assembly.GetExecutingAssembly()).Build();
+
+         using var cancellationTokenSource = new CancellationTokenSource();
+
+         Console.CancelKeyPress += (_, eventArgs) =>
+         {
+            eventArgs.Cancel = true;
+            cancellationTokenSource.Cancel();
+         };
+
          var ollamaOptions = new OllamaOptions
          {
             BaseAddress = new Uri("http://192.168.0.69:11434"),
@@ -66,48 +60,55 @@ namespace Dadpul.Jarvis.Console
          using var httpClient = new HttpClient { BaseAddress = ollamaOptions.BaseAddress };
 
          IChatModel chatModel = new OllamaChatModel(httpClient, ollamaOptions);
+
          IEmbeddingGenerator embeddingGenerator = new OllamaEmbeddingGenerator(httpClient, ollamaOptions);
+
          var assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
                                  ?? throw new InvalidOperationException("Unable to resolve application directory.");
 
-         using var container = new AggregateCatalog(new AssemblyCatalog(Assembly.GetExecutingAssembly()),
-            new DirectoryCatalog(assemblyDirectory, "Dadpul.Jarvis.Tools.*.dll"));
-         using var catalog = new CompositionContainer(container);
+         using var aggregateCatalog = new AggregateCatalog(new AssemblyCatalog(Assembly.GetExecutingAssembly()),
+            new DirectoryCatalog(assemblyDirectory, "Dadpul.Jarvis.Tools.*.dll"), new DirectoryCatalog(assemblyDirectory, "Dadpul.Jarvis.Core.dll"));
+
+         using var compositionContainer = new CompositionContainer(aggregateCatalog);
+
          var compositionBatch = new CompositionBatch();
+
          compositionBatch.AddExportedValue(chatModel);
          compositionBatch.AddExportedValue(embeddingGenerator);
          compositionBatch.AddExportedValue("embeddingModel", ollamaOptions.EmbeddingModel);
-         catalog.Compose(compositionBatch);
 
-         var registry = catalog.GetExportedValue<IToolRegistry>();
+         compositionContainer.Compose(compositionBatch);
 
-         foreach (var tool in catalog.GetExportedValues<ITool>())
+         var registry = compositionContainer.GetExportedValue<IToolRegistry>();
+
+         foreach (var tool in compositionContainer.GetExportedValues<ITool>())
          {
             Console.WriteLine($"registering {tool.Name} {tool.Version}");
+
             registry.Register(tool);
          }
 
-         //var memoryEmbedding =
-         //   await embeddingGenerator.GenerateAsync("The user prefers Celsius.", EmbeddingInputType.Document, CancellationToken.None);
+         var orchestrator = compositionContainer.GetExportedValue<IConversationOrchestrator>();
 
-         //var relatedQuestionEmbedding =
-         //   await embeddingGenerator.GenerateAsync("Which temperature unit should I use?", EmbeddingInputType.Query, CancellationToken.None);
+         IConversationProvider conversationProvider = new InMemoryConversationProvider(CreateConversation);
+         var discordToken = configuration["Discord:Token"];
 
-         //var unrelatedQuestionEmbedding =
-         //   await embeddingGenerator.GenerateAsync("What coffee machine does the user own?", EmbeddingInputType.Query, CancellationToken.None);
-         //var relatedSimilarity = CalculateCosineSimilarity(memoryEmbedding, relatedQuestionEmbedding);
+         if (string.IsNullOrWhiteSpace(discordToken))
+         {
+            throw new InvalidOperationException("Discord:Token is missing from User Secrets.");
+         }
 
-         //var unrelatedSimilarity = CalculateCosineSimilarity(memoryEmbedding, unrelatedQuestionEmbedding);
+         IReadOnlyList<IFrontend> frontends =
+         [
+            new ConsoleFrontend(),
+            new DiscordFrontend(discordToken)
+         ];
 
-         //Console.WriteLine($"Related similarity:   {relatedSimilarity:F4}");
+         var application = new JarvisApplication(orchestrator, conversationProvider, frontends);
 
-         //Console.WriteLine($"Unrelated similarity: {unrelatedSimilarity:F4}");
+         await PreloadModelAsync(httpClient, ollamaOptions.Model, cancellationTokenSource.Token);
 
-         var orchestrator = catalog.GetExportedValue<IConversationOrchestrator>();
-         var app = new JarvisConsoleApplication(conversation, orchestrator);
-         await PreloadModelAsync(httpClient, "qwen3:4b-instruct-2507-q4_K_M", CancellationToken.None);
-         //await PreloadModelAsync(httpClient, "embeddinggemma", CancellationToken.None);
-         await app.RunAsync(CancellationToken.None);
+         await application.RunAsync(cancellationTokenSource.Token);
       }
 
       private static async Task PreloadModelAsync(HttpClient httpClient, string model, CancellationToken cancellationToken = default)
@@ -117,8 +118,7 @@ namespace Dadpul.Jarvis.Console
             throw new ArgumentException("The Ollama model name cannot be empty.", nameof(model));
          }
 
-         using var response = await httpClient.PostAsJsonAsync(
-            "http://192.168.0.69:11434/api/generate", new { model, keep_alive = -1 }, cancellationToken);
+         using var response = await httpClient.PostAsJsonAsync("api/generate", new { model, keep_alive = -1 }, cancellationToken);
 
          var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 

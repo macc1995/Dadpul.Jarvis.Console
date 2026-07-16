@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Discord/">
+    <Project Path="../Dadpul.Jarvis.Discord/Dadpul.Jarvis.Discord.csproj" Id="bbb2a584-b684-4639-a156-362d7fd34504" />
+  </Folder>
   <Folder Name="/Docker/">
     <Project Path="../Dadpul.Jarvis.Docker.Agent/Dadpul.Jarvis.Docker.Agent.csproj" Id="f1bc3e47-1c8a-46b0-bedc-6c7df05e35d9" />
     <Project Path="../Dadpul.Jarvis.Docker.Contracts/Dadpul.Jarvis.Docker.Contracts.csproj" Id="c8551b83-201b-4742-876c-f0377d63b879" />
@@ -10,6 +13,7 @@
     <Project Path="../Dadpul.Jarvis.Tools.WebSearch/Dadpul.Jarvis.Tools.WebSearch.csproj" Id="aa53b2a5-7a0b-4652-bd36-c2c569b9697d" />
   </Folder>
   <Project Path="../Dadpul.Jarvis.Console/Dadpul.Jarvis.Console/Dadpul.Jarvis.Console.csproj" />
+  <Project Path="../Dadpul.Jarvis.Core/Dadpul.Jarvis.Core.csproj" Id="820f9c4e-1efa-4e54-bfa6-69188ffe0e63" />
   <Project Path="../Dadpul.Jarvis.Embeddings/Dadpul.Jarvis.Embeddings.csproj" Id="a4a86823-16ad-4010-af83-1e614044008d" />
   <Project Path="../Dadpul.Jarvis.Interfaces/Dadpul.Jarvis.Interfaces.csproj" Id="0a998681-0978-444b-bfd1-b83b76dc38a2" />
 </Solution>

@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.ComponentModel.Composition" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dadpul.Jarvis.Interfaces\Dadpul.Jarvis.Interfaces.csproj" />
+    <ProjectReference Include="..\Dadpul.Jarvis.Tools.Memory\Dadpul.Jarvis.Tools.Memory.csproj" />
+  </ItemGroup>
+
+</Project>

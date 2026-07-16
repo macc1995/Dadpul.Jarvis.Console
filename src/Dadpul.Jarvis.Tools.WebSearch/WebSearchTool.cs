@@ -1,12 +1,11 @@
 ﻿// Made by Dadpul
 
-namespace Dadpul.Jarvis.Tools.Web;
+namespace Dadpul.Jarvis.Tools.WebSearch;
 
 using System.ComponentModel.Composition;
 using System.Text.Json.Nodes;
 
 using Dadpul.Jarvis.Interfaces.Tools;
-using Dadpul.Jarvis.Tools.WebSearch;
 
 [Export(typeof(ITool))]
 internal sealed class WebSearchTool : ITool

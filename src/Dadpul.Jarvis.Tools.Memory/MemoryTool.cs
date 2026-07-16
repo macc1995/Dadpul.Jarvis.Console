@@ -6,6 +6,7 @@ using System.ComponentModel.Composition;
 using System.Text.Json.Nodes;
 
 using Dadpul.Jarvis.Interfaces.Tools;
+using Dadpul.Jarvis.Interfaces.Tools.Memory;
 
 [Export(typeof(ITool))]
 internal sealed class MemoryTool : ITool

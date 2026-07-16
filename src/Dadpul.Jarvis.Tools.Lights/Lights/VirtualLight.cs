@@ -1,6 +1,6 @@
 ﻿// Made by Dadpul
 
-namespace Dadpul.Jarvis.Console.Tools.Lights;
+namespace Dadpul.Jarvis.Tools.Lights.Lights;
 
 internal sealed class VirtualLight
 {
