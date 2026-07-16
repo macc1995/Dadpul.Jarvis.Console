@@ -39,8 +39,8 @@ namespace Dadpul.Jarvis.Console
          Console.InputEncoding = System.Text.Encoding.UTF8;
          Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-         var configuration = new ConfigurationBuilder().AddUserSecrets(Assembly.GetExecutingAssembly()).Build();
-
+         var configuration = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory).AddJsonFile("appsettings.json", optional: true)
+            .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true).Build();
          using var cancellationTokenSource = new CancellationTokenSource();
 
          Console.CancelKeyPress += (_, eventArgs) =>
