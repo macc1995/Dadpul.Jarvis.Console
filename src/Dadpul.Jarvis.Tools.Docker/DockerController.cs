@@ -8,6 +8,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using Dadpul.Jarvis.Docker.Contracts;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 [Export(typeof(IDockerController))]
 [PartCreationPolicy(CreationPolicy.Shared)]
@@ -19,37 +21,60 @@ internal sealed partial class DockerController : IDockerController, IDisposable
 
    private readonly Dictionary<string, DockerNodeClient> nodes;
 
-   #endregion
+    #endregion
 
-   #region Constructors and Destructors
+    #region Constructors and Destructors
 
-   public DockerController()
-   {
-      var configurationPath = Path.Combine(AppContext.BaseDirectory, "docker-nodes.json");
+    [ImportingConstructor]
+    public DockerController(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
 
-      if (!File.Exists(configurationPath))
-      {
-         throw new DockerControllerException($"Docker configuration was not found at '{configurationPath}'.");
-      }
+        var options = configuration
+           .GetRequiredSection(DockerOptions.SectionName)
+           .Get<DockerOptions>()
+           ?? throw new DockerControllerException(
+              "Docker configuration could not be bound.");
 
-      var configurationJson = File.ReadAllText(configurationPath);
+        if (options.Nodes.Count == 0)
+        {
+            throw new DockerControllerException(
+               "No Docker nodes are configured.");
+        }
 
-      var configuration = JsonSerializer.Deserialize<DockerNodesConfiguration>(configurationJson, JsonOptions)
-                          ?? throw new DockerControllerException("Docker node configuration could not be deserialized.");
+        if (options.RequestTimeoutSeconds <= 0)
+        {
+            throw new DockerControllerException(
+               "Docker:RequestTimeoutSeconds must be greater than zero.");
+        }
 
-      if (configuration.Nodes.Count == 0)
-      {
-         throw new DockerControllerException("No Docker nodes are configured.");
-      }
+        nodes = options.Nodes.Values.ToDictionary(
+   node => GetConfiguredNodeName(node),
+   node => CreateNodeClient(
+      node,
+      options.RequestTimeoutSeconds),
+   StringComparer.OrdinalIgnoreCase);
+    }
+    #endregion
 
-      nodes = configuration.Nodes.ToDictionary(node => node.Name, CreateNodeClient, StringComparer.OrdinalIgnoreCase);
-   }
+    #region IDisposable Members
+    private string GetNodeName(string node)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
 
-   #endregion
+        if (nodes.Keys.FirstOrDefault(
+               name => name.Equals(
+                  node,
+                  StringComparison.OrdinalIgnoreCase)) is { } found)
+        {
+            return found;
+        }
 
-   #region IDisposable Members
-
-   public void Dispose()
+        throw new DockerControllerException(
+           $"Docker node '{node}' is not configured. "
+           + $"Available nodes: {string.Join(", ", NodeNames)}.");
+    }
+    public void Dispose()
    {
       foreach (var node in nodes.Values)
       {
@@ -127,24 +152,49 @@ internal sealed partial class DockerController : IDockerController, IDisposable
       }
    }
 
-   private static DockerNodeClient CreateNodeClient(DockerNodeConfiguration configuration)
-   {
+    private static DockerNodeClient CreateNodeClient(
+    DockerNodeOptions configuration,
+    int requestTimeoutSeconds)
+    {
       if (string.IsNullOrWhiteSpace(configuration.Name))
       {
          throw new DockerControllerException("A Docker node has no name.");
       }
 
-      if (!Uri.TryCreate(configuration.BaseUrl, UriKind.Absolute, out var baseUri))
-      {
-         throw new DockerControllerException($"Docker node '{configuration.Name}' has an invalid BaseUrl.");
-      }
+        if (configuration.BaseUrl is null)
+        {
+            throw new DockerControllerException(
+               $"Docker node '{configuration.Name}' has no BaseUrl.");
+        }
 
-      var apiKey = ResolveApiKey(configuration);
+        if ((configuration.BaseUrl.Scheme != Uri.UriSchemeHttp)
+            && (configuration.BaseUrl.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new DockerControllerException(
+               $"Docker node '{configuration.Name}' must use HTTP or HTTPS.");
+        }
 
-      var httpClient = new HttpClient { BaseAddress = EnsureTrailingSlash(baseUri), Timeout = TimeSpan.FromSeconds(30) };
+        if (string.IsNullOrWhiteSpace(configuration.ApiKey))
+        {
+            throw new DockerControllerException(
+               $"Docker node '{configuration.Name}' has no API key.");
+        }
 
-      return new DockerNodeClient(httpClient, apiKey);
-   }
+        var apiKey = configuration.ApiKey;
+
+        var httpClient = new HttpClient
+        {
+            BaseAddress = EnsureTrailingSlash(
+      configuration.BaseUrl),
+
+            Timeout = TimeSpan.FromSeconds(
+      requestTimeoutSeconds)
+        };
+
+        return new DockerNodeClient(
+           httpClient,
+           apiKey);
+    }
 
    private static HttpRequestMessage CreateRequest(DockerNodeClient node, HttpMethod method, string relativeUrl)
    {
@@ -239,27 +289,7 @@ internal sealed partial class DockerController : IDockerController, IDisposable
       return new string(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
    }
 
-   private static string ResolveApiKey(DockerNodeConfiguration configuration)
-   {
-      if (!string.IsNullOrWhiteSpace(configuration.ApiKeyEnvironmentVariable))
-      {
-         var environmentValue = Environment.GetEnvironmentVariable(configuration.ApiKeyEnvironmentVariable);
-
-         if (!string.IsNullOrWhiteSpace(environmentValue))
-         {
-            return environmentValue;
-         }
-
-         throw new DockerControllerException($"Environment variable " + $"'{configuration.ApiKeyEnvironmentVariable}' is not set.");
-      }
-
-      if (!string.IsNullOrWhiteSpace(configuration.ApiKey))
-      {
-         return configuration.ApiKey;
-      }
-
-      throw new DockerControllerException($"Docker node '{configuration.Name}' has no API key.");
-   }
+   
 
    private static string[] Tokenize(string value)
    {
@@ -278,17 +308,19 @@ internal sealed partial class DockerController : IDockerController, IDisposable
       throw new DockerControllerException($"Docker node '{node}' is not configured. " + $"Available nodes: {string.Join(", ", NodeNames)}.");
    }
 
-   private string GetNodeName(string node)
-   {
-      if (nodes.Keys.FirstOrDefault(name => name.Equals(node, StringComparison.OrdinalIgnoreCase)) is { } found)
-      {
-         return found;
-      }
+    private static string GetConfiguredNodeName(
+   DockerNodeOptions configuration)
+    {
+        if (string.IsNullOrWhiteSpace(configuration.Name))
+        {
+            throw new DockerControllerException(
+               "A Docker node has no name.");
+        }
 
-      throw new DockerControllerException($"Docker node '{node}' is not configured. " + $"Available nodes: {string.Join(", ", NodeNames)}.");
-   }
+        return configuration.Name;
+    }
 
-   private async Task<IReadOnlyList<DockerContainerInfo>> ListContainersFromNodeAsync(string node, bool includeStopped,
+    private async Task<IReadOnlyList<DockerContainerInfo>> ListContainersFromNodeAsync(string node, bool includeStopped,
       CancellationToken cancellationToken)
    {
       var nodeClient = GetNode(node);
@@ -322,29 +354,6 @@ internal sealed partial class DockerController : IDockerController, IDisposable
 
    #endregion
 
-   private sealed class DockerNodeConfiguration
-   {
-      #region Public Properties
-
-      public string? ApiKey { get; init; }
-
-      public string? ApiKeyEnvironmentVariable { get; init; }
-
-      public string BaseUrl { get; init; } = string.Empty;
-
-      public string Name { get; init; } = string.Empty;
-
-      #endregion
-   }
-
-   private sealed class DockerNodesConfiguration
-   {
-      #region Public Properties
-
-      public List<DockerNodeConfiguration> Nodes { get; init; } = [];
-
-      #endregion
-   }
 
    private sealed record DockerNodeClient(HttpClient HttpClient, string ApiKey);
 }

@@ -1,10 +1,20 @@
 ﻿// Made by Dadpul
 
+namespace Dadpul.Jarvis.Discord;
+
 public sealed class DiscordOptions
 {
-   #region Public Properties
+    #region Constants and Fields
 
-   public string Token { get; set; } = string.Empty;
+    public const string SectionName = "Discord";
 
-   #endregion
+    #endregion
+
+    #region Public Properties
+
+    public bool Enabled { get; set; } = true;
+
+    public string Token { get; set; } = string.Empty;
+
+    #endregion
 }

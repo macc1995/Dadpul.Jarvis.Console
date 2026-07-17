@@ -4,15 +4,29 @@ namespace Dadpul.Jarvis.Core.Ollama;
 
 public sealed class OllamaOptions
 {
-   #region Public Properties
+    #region Public Properties
 
-   public required Uri BaseAddress { get; init; }
+    public static  string SectionName { get; } = "Ollama";
 
-   public required string EmbeddingModel { get; init; }
+    public Uri? BaseAddress { get; set; }
 
-   public required string Model { get; init; }
+    public string EmbeddingModel { get; set; } = string.Empty;
 
-   public bool Think { get; init; } = false;
+    public string Model { get; set; } = string.Empty;
 
-   #endregion
+    public bool Think { get; set; }
+
+    public OllamaPreloadOptions Preload { get; set; } = new();
+
+    #endregion
+}
+public sealed class OllamaPreloadOptions
+{
+    #region Public Properties
+
+    public bool Enabled { get; set; } = true;
+
+    public int KeepAlive { get; set; } = -1;
+
+    #endregion
 }

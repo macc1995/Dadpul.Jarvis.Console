@@ -90,9 +90,11 @@ public sealed class DiscordFrontend : IFrontend
 
       client.MessageReceived += message => OnMessageReceivedAsync(message, messageHandler, cancellationToken);
 
+        Console.WriteLine("Logging in Discord bot");
       await client.LoginAsync(TokenType.Bot, token);
       await client.StartAsync();
 
+        Console.WriteLine("Successfully logged in discord bot");
       try
       {
          await Task.Delay(Timeout.Infinite, cancellationToken);
@@ -137,8 +139,9 @@ public sealed class DiscordFrontend : IFrontend
       {
          return;
       }
-
-      var conversationId = message.Channel.Id.ToString();
+        //await message.Channel.SendMessageAsync("hello there");
+        //return;
+        var conversationId = message.Channel.Id.ToString();
 
       responses.AddOrUpdate(conversationId, _ => new ResponseState { ChannelId = message.Channel.Id }, (_, existing) =>
       {

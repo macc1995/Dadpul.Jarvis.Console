@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\Solution</DockerfileContext>
+    <CopyRefAssembliesToPublishDirectory>true</CopyRefAssembliesToPublishDirectory>
+    <OutputPath>$(SharedOutputFolder)Dadpul.Jarvis.Docker.Agent\</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>

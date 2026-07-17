@@ -2,134 +2,257 @@
 
 namespace Dadpul.Jarvis.Console
 {
-   using System.ComponentModel.Composition;
-   using System.ComponentModel.Composition.Hosting;
-   using System.Net.Http.Json;
-   using System.Reflection;
+    using Dadpul.Jarvis.Core.Application;
+    using Dadpul.Jarvis.Core.Application.Propmpts;
+    using Dadpul.Jarvis.Core.Chat;
+    using Dadpul.Jarvis.Core.Conversation;
+    using Dadpul.Jarvis.Core.Ollama;
+    using Dadpul.Jarvis.Discord;
+    using Dadpul.Jarvis.Embeddings;
+    using Dadpul.Jarvis.Interfaces.Frontend;
+    using Dadpul.Jarvis.Interfaces.Tools;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Options;
+    using System.ComponentModel.Composition;
+    using System.ComponentModel.Composition.Hosting;
+    using System.Net.Http.Json;
+    using System.Reflection;
+    using Console = System.Console;
 
-   using Dadpul.Jarvis.Core.Application;
-   using Dadpul.Jarvis.Core.Application.Propmpts;
-   using Dadpul.Jarvis.Core.Chat;
-   using Dadpul.Jarvis.Core.Conversation;
-   using Dadpul.Jarvis.Core.Ollama;
-   using Dadpul.Jarvis.Discord;
-   using Dadpul.Jarvis.Embeddings;
-   using Dadpul.Jarvis.Interfaces.Frontend;
-   using Dadpul.Jarvis.Interfaces.Tools;
+    internal static class Program
+    {
+        #region Methods
 
-   using Microsoft.Extensions.Configuration;
+        private static ChatConversation CreateConversation()
+        {
+            ChatConversation conversation = new ChatConversation();
 
-   using Console = System.Console;
+            conversation.AddSystemMessage(JarvisSystemPrompt.Content);
 
-   internal static class Program
-   {
-      #region Methods
+            return conversation;
+        }
 
-      private static ChatConversation CreateConversation()
-      {
-         var conversation = new ChatConversation();
+        private static async Task Main(string[] args)
+        {
+            using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
-         conversation.AddSystemMessage(JarvisSystemPrompt.Content);
+            //Console stuff
+            SetupConsole(cancellationTokenSource);
+           
 
-         return conversation;
-      }
+            //Config
+            IConfigurationRoot configuration = LoadConfig();
 
-      private static async Task Main(string[] args)
-      {
-         Console.InputEncoding = System.Text.Encoding.UTF8;
-         Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-         var configuration = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory).AddJsonFile("appsettings.json", optional: true)
-            .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true).Build();
-         using var cancellationTokenSource = new CancellationTokenSource();
+            //DI service registrations
+            var services = RegisterServices(configuration);
+            using ServiceProvider serviceProvider = services.BuildServiceProvider();
 
-         Console.CancelKeyPress += (_, eventArgs) =>
-         {
-            eventArgs.Cancel = true;
-            cancellationTokenSource.Cancel();
-         };
 
-         var ollamaOptions = new OllamaOptions
-         {
-            BaseAddress = new Uri("http://192.168.0.69:11434"),
-            Model = "qwen3:4b-instruct-2507-q4_K_M",
-            Think = false,
-            EmbeddingModel = "embeddinggemma"
-         };
+            //MEF
+            
+            using var catalog = CreateMefCatalog(); 
+            using CompositionContainer compositionContainer = CreateMefContainer(catalog);
+            CompositionBatch compositionBatch = new CompositionBatch();
+            compositionBatch.AddExportedValue<IConfiguration>(configuration);
 
-         using var httpClient = new HttpClient { BaseAddress = ollamaOptions.BaseAddress };
+            //Ollama stuff
 
-         IChatModel chatModel = new OllamaChatModel(httpClient, ollamaOptions);
+            await StartOllama(serviceProvider, compositionBatch, cancellationTokenSource);
+            
+            
+            compositionContainer.Compose(compositionBatch);
 
-         IEmbeddingGenerator embeddingGenerator = new OllamaEmbeddingGenerator(httpClient, ollamaOptions);
 
-         var assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-                                 ?? throw new InvalidOperationException("Unable to resolve application directory.");
+            //Tools
+            RegisterTools(compositionContainer);
+            
 
-         using var aggregateCatalog = new AggregateCatalog(new AssemblyCatalog(Assembly.GetExecutingAssembly()),
-            new DirectoryCatalog(assemblyDirectory, "Dadpul.Jarvis.Tools.*.dll"), new DirectoryCatalog(assemblyDirectory, "Dadpul.Jarvis.Core.dll"));
+            //Orchestration
+            IConversationOrchestrator? orchestrator = compositionContainer.GetExportedValue<IConversationOrchestrator>();
 
-         using var compositionContainer = new CompositionContainer(aggregateCatalog);
+            IConversationProvider conversationProvider = new InMemoryConversationProvider(CreateConversation);
 
-         var compositionBatch = new CompositionBatch();
 
-         compositionBatch.AddExportedValue(chatModel);
-         compositionBatch.AddExportedValue(embeddingGenerator);
-         compositionBatch.AddExportedValue("embeddingModel", ollamaOptions.EmbeddingModel);
+            List<IFrontend> frontends = new List<IFrontend>
+            {
+                new ConsoleFrontend()
+            };
 
-         compositionContainer.Compose(compositionBatch);
+            //Discord
+            var discord = CreateDiscordFrontend(configuration,serviceProvider);
+            if(discord != null)
+            {
+                frontends.Add(discord);
+            }
+            
 
-         var registry = compositionContainer.GetExportedValue<IToolRegistry>();
+            //App
+            JarvisApplication application = new JarvisApplication(orchestrator, conversationProvider, frontends);
+            await application.RunAsync(cancellationTokenSource.Token);
+        }
 
-         foreach (var tool in compositionContainer.GetExportedValues<ITool>())
-         {
-            Console.WriteLine($"registering {tool.Name} {tool.Version}");
+        private static DiscordFrontend CreateDiscordFrontend(IConfigurationRoot configuration, ServiceProvider serviceProvider)
+        {
+            string? discordToken = configuration["Discord:Token"];
 
-            registry.Register(tool);
-         }
+            if (string.IsNullOrWhiteSpace(discordToken))
+            {
+                throw new InvalidOperationException("Discord:Token is missing from User Secrets.");
+            }
 
-         var orchestrator = compositionContainer.GetExportedValue<IConversationOrchestrator>();
+            DiscordOptions discordOptions = serviceProvider
+               .GetRequiredService<IOptions<DiscordOptions>>()
+               .Value;
+            if (discordOptions.Enabled)
+            {
+                var discord = new DiscordFrontend(discordOptions.Token);
+                //await discord.RunAsync(null, CancellationToken.None);
+                return discord;  
+            }
+            return null;
+        }
 
-         IConversationProvider conversationProvider = new InMemoryConversationProvider(CreateConversation);
-         var discordToken = configuration["Discord:Token"];
+        private static void RegisterTools(CompositionContainer compositionContainer)
+        {
+            IToolRegistry? registry = compositionContainer.GetExportedValue<IToolRegistry>();
 
-         if (string.IsNullOrWhiteSpace(discordToken))
-         {
-            throw new InvalidOperationException("Discord:Token is missing from User Secrets.");
-         }
+            foreach (ITool tool in compositionContainer.GetExportedValues<ITool>())
+            {
+                Console.WriteLine($"registering {tool.Name} {tool.Version}");
 
-         IReadOnlyList<IFrontend> frontends =
-         [
-            new ConsoleFrontend(),
-            new DiscordFrontend(discordToken)
-         ];
+                registry.Register(tool);
+            }
+        }
 
-         var application = new JarvisApplication(orchestrator, conversationProvider, frontends);
+        private static AggregateCatalog CreateMefCatalog()
+        {
+            string assemblyDirectory =
+               Path.GetDirectoryName(
+                  Assembly.GetExecutingAssembly().Location)
+               ?? throw new InvalidOperationException(
+                  "Unable to resolve application directory.");
 
-         await PreloadModelAsync(httpClient, ollamaOptions.Model, cancellationTokenSource.Token);
+            return new AggregateCatalog(
+               new AssemblyCatalog(
+                  Assembly.GetExecutingAssembly()),
 
-         await application.RunAsync(cancellationTokenSource.Token);
-      }
+               new DirectoryCatalog(
+                  assemblyDirectory,
+                  "Dadpul.Jarvis.Tools.*.dll"),
 
-      private static async Task PreloadModelAsync(HttpClient httpClient, string model, CancellationToken cancellationToken = default)
-      {
-         if (string.IsNullOrWhiteSpace(model))
-         {
-            throw new ArgumentException("The Ollama model name cannot be empty.", nameof(model));
-         }
+               new DirectoryCatalog(
+                  assemblyDirectory,
+                  "Dadpul.Jarvis.Core.dll"));
+        }
+        private static CompositionContainer CreateMefContainer(AggregateCatalog catalog)
+        {
+            
+             CompositionContainer compositionContainer = new CompositionContainer(catalog);
+            return compositionContainer;
+        }
 
-         using var response = await httpClient.PostAsJsonAsync("api/generate", new { model, keep_alive = -1 }, cancellationToken);
+        private static async Task  StartOllama(ServiceProvider serviceProvider, CompositionBatch compositionBatch, CancellationTokenSource cancellationTokenSource)
+        {
+            OllamaOptions ollamaOptions = serviceProvider
+                .GetRequiredService<IOptions<OllamaOptions>>()
+                .Value;
 
-         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            using HttpClient httpClient = new HttpClient
+            {
+                BaseAddress = ollamaOptions.BaseAddress
+                ?? throw new InvalidOperationException(
+                    "Ollama:BaseAddress was not configured.")
+            };
 
-         if (!response.IsSuccessStatusCode)
-         {
-            throw new HttpRequestException(
-               $"Ollama preload failed for model '{model}'. " + $"HTTP {(int)response.StatusCode} {response.StatusCode}. "
-                                                              + $"Response: {responseBody}", inner: null, response.StatusCode);
-         }
-      }
+            IChatModel chatModel = new OllamaChatModel(httpClient, ollamaOptions);
 
-      #endregion
-   }
+            IEmbeddingGenerator embeddingGenerator = new OllamaEmbeddingGenerator(httpClient, ollamaOptions);
+
+            compositionBatch.AddExportedValue(chatModel);
+            compositionBatch.AddExportedValue(embeddingGenerator);
+            compositionBatch.AddExportedValue("embeddingModel", ollamaOptions.EmbeddingModel);
+
+            if (ollamaOptions.Preload.Enabled)
+            {
+                await PreloadModelAsync(
+                   httpClient,
+                   ollamaOptions.Model,
+                   ollamaOptions.Preload.KeepAlive,
+                   cancellationTokenSource.Token);
+            }
+
+        }
+
+        private static void SetupConsole(CancellationTokenSource cancellationTokenSource)
+        {
+            Console.InputEncoding = System.Text.Encoding.UTF8;
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+            Console.CancelKeyPress += (_, eventArgs) =>
+            {
+                eventArgs.Cancel = true;
+                cancellationTokenSource.Cancel();
+            };
+        }
+
+        private static ServiceCollection RegisterServices(IConfigurationRoot configuration)
+        {
+            ServiceCollection services = new ServiceCollection();
+
+            services.AddSingleton<IConfiguration>(configuration);
+
+            services.AddOptions<OllamaOptions>()
+                .Bind(configuration.GetRequiredSection(OllamaOptions.SectionName))
+                .Validate(options => options.BaseAddress is not null,
+                "Ollama:BaseAddress is required.")
+                .Validate(
+                options => !string.IsNullOrWhiteSpace(options.Model),
+                "Ollama:Model is required.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.EmbeddingModel),
+                "Ollama:EmbeddingModel is required.");
+
+            services.AddOptions<DiscordOptions>()
+                .Bind(configuration.GetRequiredSection(DiscordOptions.SectionName))
+                .Validate(options => !options.Enabled || !string.IsNullOrWhiteSpace(options.Token),
+                "Discord:Token is required when Discord is enabled.");
+
+            return services;
+        }
+
+        private static IConfigurationRoot LoadConfig()
+        {
+           return new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+                .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
+                .AddEnvironmentVariables().Build();
+        }
+
+        private static async Task PreloadModelAsync(
+   HttpClient httpClient,
+   string model,
+   int keepAlive,
+   CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(model))
+            {
+                throw new ArgumentException("The Ollama model name cannot be empty.", nameof(model));
+            }
+
+            using HttpResponseMessage response = await httpClient.PostAsJsonAsync("api/generate", new { model, keep_alive = keepAlive }, cancellationToken);
+
+            string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                   $"Ollama preload failed for model '{model}'. " + $"HTTP {(int)response.StatusCode} {response.StatusCode}. "
+                                                                  + $"Response: {responseBody}", inner: null, response.StatusCode);
+            }
+        }
+
+        #endregion
+    }
 }
