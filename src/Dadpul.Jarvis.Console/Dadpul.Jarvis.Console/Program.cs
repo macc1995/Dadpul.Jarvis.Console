@@ -149,7 +149,7 @@ namespace Dadpul.Jarvis.Console
         private static CompositionContainer CreateMefContainer(AggregateCatalog catalog)
         {
             
-             CompositionContainer compositionContainer = new CompositionContainer(catalog);
+             CompositionContainer compositionContainer = new CompositionContainer(catalog, isThreadSafe:true);
             return compositionContainer;
         }
 
