@@ -11,7 +11,7 @@ namespace Dadpul.Jarvis.Console
     using Dadpul.Jarvis.Embeddings;
     using Dadpul.Jarvis.Interfaces.Frontend;
     using Dadpul.Jarvis.Interfaces.Tools;
-    using Discord;
+    using Dadpul.Jarvis.LlamaSharp;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Options;
@@ -79,8 +79,29 @@ namespace Dadpul.Jarvis.Console
 
             var echo = new EchoChatModel();
             models.Add(echo);
-         
-            
+
+
+
+            var largeOptions = configuration
+   .GetSection("ChatModels:EmbeddedLarge")
+   .Get<LLamaSharpModelOptions>()
+   ?? throw new InvalidOperationException(
+      "Embedded large model configuration is missing.");
+
+            var smallOptions = configuration
+               .GetSection("ChatModels:EmbeddedSmall")
+               .Get<LLamaSharpModelOptions>()
+               ?? throw new InvalidOperationException(
+                  "Embedded small model configuration is missing.");
+
+            models.Add(
+               new LLamaSharpChatModel(largeOptions));
+
+            models.Add(
+               new LLamaSharpChatModel(smallOptions));
+
+
+
             IChatModelSelector chatModelSelector = new ChatModelSelector(models.OrderByDescending(x=>x.Priority));
             compositionBatch.AddExportedValue(chatModelSelector);
             compositionContainer.Compose(compositionBatch);

@@ -16,4 +16,5 @@
   <Project Path="../Dadpul.Jarvis.Core/Dadpul.Jarvis.Core.csproj" Id="820f9c4e-1efa-4e54-bfa6-69188ffe0e63" />
   <Project Path="../Dadpul.Jarvis.Embeddings/Dadpul.Jarvis.Embeddings.csproj" Id="a4a86823-16ad-4010-af83-1e614044008d" />
   <Project Path="../Dadpul.Jarvis.Interfaces/Dadpul.Jarvis.Interfaces.csproj" Id="0a998681-0978-444b-bfd1-b83b76dc38a2" />
+  <Project Path="../Dadpul.Jarvis.LlamaSharp/Dadpul.Jarvis.LlamaSharp.csproj" Id="56d8d778-0db5-4ee7-8039-4fde824fc4f1" />
 </Solution>
