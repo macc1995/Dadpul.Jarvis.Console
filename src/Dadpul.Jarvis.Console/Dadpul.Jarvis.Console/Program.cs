@@ -167,10 +167,10 @@ namespace Dadpul.Jarvis.Console
                        
 
             IChatModel chatModel = new OllamaChatModel(httpClient, ollamaOptions);
-
+            IChatModelSelector chatModelSelector =   new ChatModelSelector(chatModel);
             IEmbeddingGenerator embeddingGenerator = new OllamaEmbeddingGenerator(httpClient, ollamaOptions);
 
-            compositionBatch.AddExportedValue(chatModel);
+            compositionBatch.AddExportedValue(chatModelSelector);
             compositionBatch.AddExportedValue(embeddingGenerator);
             compositionBatch.AddExportedValue("embeddingModel", ollamaOptions.EmbeddingModel);
 

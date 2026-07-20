@@ -27,7 +27,7 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
 
    private static readonly JsonSerializerOptions verifierJsonOptions = new(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
 
-   private readonly IChatModel chatModel;
+   private readonly IChatModelSelector chatModelSelector;
 
    private readonly IMemoryRetriever memoryRetriever;
 
@@ -38,21 +38,26 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
    #region Constructors and Destructors
 
    [ImportingConstructor]
-   public ConversationOrchestrator(IChatModel chatModel, IMemoryRetriever memoryRetriever, IToolRegistry toolRegistry)
-   {
-      this.chatModel = chatModel;
-      this.memoryRetriever = memoryRetriever;
-      this.toolRegistry = toolRegistry;
-   }
+    public ConversationOrchestrator(
+   IChatModelSelector chatModelSelector,
+   IMemoryRetriever memoryRetriever,
+   IToolRegistry toolRegistry)
+    {
+        this.chatModelSelector = chatModelSelector;
+        this.memoryRetriever = memoryRetriever;
+        this.toolRegistry = toolRegistry;
+    }
 
-   #endregion
+    #endregion
 
-   #region IConversationOrchestrator Members
+    #region IConversationOrchestrator Members
 
-   public async IAsyncEnumerable<ChatResponseChunk> RespondAsync(ChatConversation conversation,
+    public async IAsyncEnumerable<ChatResponseChunk> RespondAsync(ChatConversation conversation,
       [EnumeratorCancellation] CancellationToken cancellationToken)
    {
-      IReadOnlyList<ChatToolDefinition> toolDefinitions = toolRegistry.Tools.Select(ConvertTool).ToList();
+        IChatModel chatModel =
+   await chatModelSelector.SelectAsync(cancellationToken);
+        IReadOnlyList<ChatToolDefinition> toolDefinitions = toolRegistry.Tools.Select(ConvertTool).ToList();
 
       const int maximumIterations = 10;
 
@@ -113,9 +118,13 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
          {
             var draft = assistantContent.ToString();
 
-            var verification = await VerifyResponseAsync(latestUserMessage?.Content ?? string.Empty, draft, executions, cancellationToken);
-
-            if (!verification.Valid)
+                var verification = await VerifyResponseAsync(
+       chatModel,
+       requestMessages,
+       draft,
+       executions,
+       cancellationToken);
+                if (!verification.Valid)
             {
                Console.WriteLine("verification invalid");
                var message = $"""
@@ -317,21 +326,35 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
       }
    }
 
-   private async Task<ResponseVerificationResult> VerifyResponseAsync(string userMessage, string assistantDraft,
-      IReadOnlyList<ToolExecutionRecord> executions, CancellationToken cancellationToken)
+    private static async Task<ResponseVerificationResult> VerifyResponseAsync(
+   IChatModel chatModel,
+   IReadOnlyList<ChatMessage> requestMessages,
+   string assistantDraft,
+   IReadOnlyList<ToolExecutionRecord> executions,
+   CancellationToken cancellationToken)
+    {
+        var verificationPayload = JsonSerializer.Serialize(
+   new
    {
-      var verificationPayload = JsonSerializer.Serialize(
-         new
+       conversationContext = requestMessages.Select(
+         message => new
          {
-            userRequest = userMessage,
-            proposedResponse = assistantDraft,
-            toolExecutions = executions.Select(execution => new
-            {
-               toolName = execution.ToolName, arguments = execution.Arguments, success = execution.Success, result = execution.Result
-            })
-         }, verifierJsonOptions);
+             role = message.Role.ToString(),
+             content = message.Content
+         }),
+       proposedResponse = assistantDraft,
+       toolExecutions = executions.Select(
+         execution => new
+         {
+             toolName = execution.ToolName,
+             arguments = execution.Arguments,
+             success = execution.Success,
+             result = execution.Result
+         })
+   },
+   verifierJsonOptions);
 
-      IReadOnlyList<ChatMessage> verificationMessages =
+        IReadOnlyList<ChatMessage> verificationMessages =
       [
          new ChatMessage(ChatRole.System, """
                                           You are a strict tool-execution grounding verifier.
