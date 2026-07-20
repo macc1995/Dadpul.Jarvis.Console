@@ -11,6 +11,7 @@ namespace Dadpul.Jarvis.Console
     using Dadpul.Jarvis.Embeddings;
     using Dadpul.Jarvis.Interfaces.Frontend;
     using Dadpul.Jarvis.Interfaces.Tools;
+    using Discord;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Options;
@@ -58,6 +59,8 @@ namespace Dadpul.Jarvis.Console
             compositionBatch.AddExportedValue<IConfiguration>(configuration);
 
             //Ollama stuff
+
+            var models = new List<IChatModel>();
             OllamaOptions ollamaOptions = serviceProvider
    .GetRequiredService<IOptions<OllamaOptions>>()
    .Value;
@@ -68,9 +71,18 @@ namespace Dadpul.Jarvis.Console
                   ?? throw new InvalidOperationException(
                      "Ollama:BaseAddress was not configured.")
             };
-            await StartOllama(ollamaOptions,ollamaHttpClient, compositionBatch, cancellationTokenSource);
+
+
+
+            var ollama= await StartOllama(ollamaOptions,ollamaHttpClient, compositionBatch, cancellationTokenSource);
+            models.Add(ollama);
+
+            var echo = new EchoChatModel();
+            models.Add(echo);
+         
             
-            
+            IChatModelSelector chatModelSelector = new ChatModelSelector(models.OrderByDescending(x=>x.Priority));
+            compositionBatch.AddExportedValue(chatModelSelector);
             compositionContainer.Compose(compositionBatch);
 
 
@@ -162,17 +174,15 @@ namespace Dadpul.Jarvis.Console
             return compositionContainer;
         }
 
-        private static async Task  StartOllama(OllamaOptions ollamaOptions, HttpClient httpClient, CompositionBatch compositionBatch, CancellationTokenSource cancellationTokenSource)
+        private static async Task<IChatModel>  StartOllama(OllamaOptions ollamaOptions, HttpClient httpClient, CompositionBatch compositionBatch, CancellationTokenSource cancellationTokenSource)
         {
 
 
-            var models = new List<IChatModel>();
+            
             IChatModel chatModel = new OllamaChatModel(httpClient, ollamaOptions);
-            models.Add(chatModel);
-            IChatModelSelector chatModelSelector =   new ChatModelSelector(models);
+            
             IEmbeddingGenerator embeddingGenerator = new OllamaEmbeddingGenerator(httpClient, ollamaOptions);
 
-            compositionBatch.AddExportedValue(chatModelSelector);
             compositionBatch.AddExportedValue(embeddingGenerator);
             compositionBatch.AddExportedValue("embeddingModel", ollamaOptions.EmbeddingModel);
 
@@ -184,6 +194,7 @@ namespace Dadpul.Jarvis.Console
                    ollamaOptions.Preload.KeepAlive,
                    cancellationTokenSource.Token);
             }
+            return chatModel;
 
         }
 

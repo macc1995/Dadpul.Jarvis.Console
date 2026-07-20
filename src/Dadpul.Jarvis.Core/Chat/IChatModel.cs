@@ -7,6 +7,9 @@ using Dadpul.Jarvis.Core.Conversation;
 public interface IChatModel
 {
     #region Public Methods and Operators
+
+    int Priority { get; }
+
     Task<bool> IsAvailableAsync(
         CancellationToken cancellationToken);
     IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(IReadOnlyList<ChatMessage> messages, IReadOnlyList<ChatToolDefinition> tools,

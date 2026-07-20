@@ -51,7 +51,35 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
     #endregion
 
     #region IConversationOrchestrator Members
+    private async Task<IReadOnlyList<MemoryMatch>> RetrieveMemoriesAsync(
+   IChatModel chatModel,
+   ChatMessage? latestUserMessage,
+   CancellationToken cancellationToken)
+    {
+        if (latestUserMessage is null || chatModel.Descriptor.Capabilities < ChatModelCapabilities.FullTools)
+        {
+            return [];
+        }
 
+        try
+        {
+            return await memoryRetriever.RetrieveAsync(
+               latestUserMessage.Content,
+               cancellationToken);
+        }
+        catch (OperationCanceledException)
+           when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (HttpRequestException exception)
+        {
+            Console.WriteLine(
+               $"[Memory retrieval unavailable: {exception.Message}]");
+
+            return [];
+        }
+    }
     public async IAsyncEnumerable<ChatResponseChunk> RespondAsync(ChatConversation conversation,
       [EnumeratorCancellation] CancellationToken cancellationToken)
    {
@@ -62,13 +90,13 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
             Console.WriteLine("No model found!");
             yield break;
         }
-        IReadOnlyList<ChatToolDefinition> toolDefinitions = toolRegistry.Tools.Select(ConvertTool).ToList();
+        IReadOnlyList<ChatToolDefinition> toolDefinitions = chatModel.Descriptor.Capabilities == ChatModelCapabilities.ConversationOnly? []:  toolRegistry.Tools.Select(ConvertTool).ToList();
 
       const int maximumIterations = 10;
 
       var latestUserMessage = conversation.Messages.LastOrDefault(message => message.Role == ChatRole.User);
 
-      var relevantMemories = latestUserMessage is null ? [] : await memoryRetriever.RetrieveAsync(latestUserMessage.Content, cancellationToken);
+        var relevantMemories = latestUserMessage is null ? [] : await RetrieveMemoriesAsync(chatModel, latestUserMessage, cancellationToken);
 
       /*
        * These records cover the complete current user turn, including
@@ -121,18 +149,21 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
 
          if (toolCalls.Count == 0)
          {
-            var draft = assistantContent.ToString();
+                if (chatModel.Descriptor.Capabilities !=
+       ChatModelCapabilities.ConversationOnly)
+                {
+                    var draft = assistantContent.ToString();
 
-                var verification = await VerifyResponseAsync(
-       chatModel,
-       requestMessages,
-       draft,
-       executions,
-       cancellationToken);
-                if (!verification.Valid)
-            {
-               Console.WriteLine("verification invalid");
-               var message = $"""
+                    var verification = await VerifyResponseAsync(
+           chatModel,
+           requestMessages,
+           draft,
+           executions,
+           cancellationToken);
+                    if (!verification.Valid)
+                    {
+                        Console.WriteLine("verification invalid");
+                        var message = $"""
                               Your previous proposed response was rejected because it was
                               not grounded in the actual tool executions from this turn.
 
@@ -154,11 +185,12 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
                               response supported by the tool results.
                               """;
 
-               Console.WriteLine(message);
-               correctionMessages.Add(new ChatMessage(ChatRole.System, message));
+                        Console.WriteLine(message);
+                        correctionMessages.Add(new ChatMessage(ChatRole.System, message));
 
-               continue;
-            }
+                        continue;
+                    }
+                }
 
             /*
              * The verifier accepted the draft, so the buffered content can now

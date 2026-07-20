@@ -22,6 +22,8 @@ public sealed class OllamaChatModel : IChatModel
 
     public ChatModelDescriptor Descriptor => new ChatModelDescriptor("Ollama", ChatModelCapabilities.FullTools, false);
 
+    public int Priority => 10;
+
     #endregion
 
     #region Constructors and Destructors
