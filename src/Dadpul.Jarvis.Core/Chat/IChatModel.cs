@@ -11,5 +11,17 @@ public interface IChatModel
    IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(IReadOnlyList<ChatMessage> messages, IReadOnlyList<ChatToolDefinition> tools,
       CancellationToken cancellationToken);
 
-   #endregion
+    ChatModelDescriptor Descriptor { get; }
+    #endregion
+}
+
+public sealed record ChatModelDescriptor(
+   string Name,
+   ChatModelCapabilities Capabilities,
+   bool IsFallback);
+public enum ChatModelCapabilities
+{
+    ConversationOnly = 0,
+    BasicTools = 1,
+    FullTools = 2
 }

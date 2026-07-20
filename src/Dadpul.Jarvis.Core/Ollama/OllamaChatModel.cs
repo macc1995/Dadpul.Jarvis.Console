@@ -20,11 +20,13 @@ public sealed class OllamaChatModel : IChatModel
 
    private readonly OllamaOptions options;
 
-   #endregion
+    public ChatModelDescriptor Descriptor => new ChatModelDescriptor("Ollama", ChatModelCapabilities.FullTools, false);
 
-   #region Constructors and Destructors
+    #endregion
 
-   public OllamaChatModel(HttpClient httpClient, OllamaOptions options)
+    #region Constructors and Destructors
+
+    public OllamaChatModel(HttpClient httpClient, OllamaOptions options)
    {
       this.httpClient = httpClient;
       this.options = options;

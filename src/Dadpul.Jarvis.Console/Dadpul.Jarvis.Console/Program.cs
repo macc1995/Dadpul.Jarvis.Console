@@ -58,8 +58,17 @@ namespace Dadpul.Jarvis.Console
             compositionBatch.AddExportedValue<IConfiguration>(configuration);
 
             //Ollama stuff
+            OllamaOptions ollamaOptions = serviceProvider
+   .GetRequiredService<IOptions<OllamaOptions>>()
+   .Value;
 
-            await StartOllama(serviceProvider, compositionBatch, cancellationTokenSource);
+            using HttpClient ollamaHttpClient = new HttpClient
+            {
+                BaseAddress = ollamaOptions.BaseAddress
+                  ?? throw new InvalidOperationException(
+                     "Ollama:BaseAddress was not configured.")
+            };
+            await StartOllama(ollamaOptions,ollamaHttpClient, compositionBatch, cancellationTokenSource);
             
             
             compositionContainer.Compose(compositionBatch);
@@ -153,18 +162,9 @@ namespace Dadpul.Jarvis.Console
             return compositionContainer;
         }
 
-        private static async Task  StartOllama(ServiceProvider serviceProvider, CompositionBatch compositionBatch, CancellationTokenSource cancellationTokenSource)
+        private static async Task  StartOllama(OllamaOptions ollamaOptions, HttpClient httpClient, CompositionBatch compositionBatch, CancellationTokenSource cancellationTokenSource)
         {
-            OllamaOptions ollamaOptions = serviceProvider
-                .GetRequiredService<IOptions<OllamaOptions>>()
-                .Value;
-
-            using HttpClient httpClient = new HttpClient
-            {
-                BaseAddress = ollamaOptions.BaseAddress
-                ?? throw new InvalidOperationException(
-                    "Ollama:BaseAddress was not configured.")
-            };
+                       
 
             IChatModel chatModel = new OllamaChatModel(httpClient, ollamaOptions);
 
