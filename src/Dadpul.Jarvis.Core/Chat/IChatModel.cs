@@ -2,6 +2,7 @@
 
 namespace Dadpul.Jarvis.Core.Chat;
 
+using Dadpul.Jarvis.Core.Application.Propmpts;
 using Dadpul.Jarvis.Core.Conversation;
 
 public interface IChatModel
@@ -9,7 +10,7 @@ public interface IChatModel
     #region Public Methods and Operators
 
     int Priority { get; }
-
+    ISystemPrompt SystemPrompt { get; }
     Task<bool> IsAvailableAsync(
         CancellationToken cancellationToken);
     IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(IReadOnlyList<ChatMessage> messages, IReadOnlyList<ChatToolDefinition> tools,

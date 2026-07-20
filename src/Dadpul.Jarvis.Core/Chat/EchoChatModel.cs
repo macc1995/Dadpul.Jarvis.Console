@@ -2,6 +2,7 @@
 
 namespace Dadpul.Jarvis.Core.Chat;
 
+using Dadpul.Jarvis.Core.Application.Propmpts;
 using Dadpul.Jarvis.Core.Conversation;
 using System.ComponentModel.Composition;
 
@@ -13,6 +14,8 @@ public sealed class EchoChatModel : IChatModel
 
 
     public int Priority => 0;
+
+    public ISystemPrompt SystemPrompt => new CustomSystemPrompt("Yeah..");
     #region IChatModel Members
 
     public async IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(IReadOnlyList<ChatMessage> messages,

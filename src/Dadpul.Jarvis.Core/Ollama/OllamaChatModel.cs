@@ -6,7 +6,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-
+using Dadpul.Jarvis.Core.Application.Propmpts;
 using Dadpul.Jarvis.Core.Chat;
 using Dadpul.Jarvis.Core.Conversation;
 using Dadpul.Jarvis.Core.Ollama.Model;
@@ -23,6 +23,8 @@ public sealed class OllamaChatModel : IChatModel
     public ChatModelDescriptor Descriptor => new ChatModelDescriptor("Ollama", ChatModelCapabilities.FullTools, false);
 
     public int Priority => 10;
+
+    public ISystemPrompt SystemPrompt => new JarvisSystemPrompt();
 
     #endregion
 

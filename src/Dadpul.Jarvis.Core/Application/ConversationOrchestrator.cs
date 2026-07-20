@@ -123,9 +123,13 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
           */
          var bufferedVisibleChunks = new List<ChatResponseChunk>();
 
-         var requestMessages = BuildRequestMessages(conversation, relevantMemories, correctionMessages);
-
-         await foreach (var chunk in chatModel.GenerateResponseAsync(requestMessages, toolDefinitions, cancellationToken))
+         var requestMessages =
+      BuildRequestMessages(
+         chatModel,
+         conversation,
+         relevantMemories,
+         correctionMessages);
+            await foreach (var chunk in chatModel.GenerateResponseAsync(requestMessages, toolDefinitions, cancellationToken))
          {
             if (!string.IsNullOrEmpty(chunk.Content))
             {
@@ -229,16 +233,26 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
       throw new InvalidOperationException($"The model exceeded the maximum of " + $"{maximumIterations} response iterations.");
    }
 
-   #endregion
+    #endregion
 
-   #region Methods
+    #region Methods
 
-   private static IReadOnlyList<ChatMessage> BuildRequestMessages(ChatConversation conversation, IReadOnlyList<MemoryMatch> relevantMemories,
-      IReadOnlyList<ChatMessage> correctionMessages)
-   {
-      var requestMessages = conversation.Messages.ToList();
+    private static IReadOnlyList<ChatMessage> BuildRequestMessages(
+    IChatModel chatModel,
+    ChatConversation conversation,
+    IReadOnlyList<MemoryMatch> relevantMemories,
+    IReadOnlyList<ChatMessage> correctionMessages)
+    {
+        var requestMessages = new List<ChatMessage>
+{
+   new(
+      ChatRole.System,
+      chatModel.SystemPrompt.Content)
+};
 
-      if (relevantMemories.Count > 0)
+        requestMessages.AddRange(conversation.Messages);
+
+        if (relevantMemories.Count > 0)
       {
          var memoryContent = string.Join(Environment.NewLine, relevantMemories.Select(match => $"""
                                                                                                 <memory>

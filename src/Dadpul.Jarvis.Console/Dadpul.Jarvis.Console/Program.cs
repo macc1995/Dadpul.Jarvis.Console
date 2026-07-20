@@ -25,13 +25,18 @@ namespace Dadpul.Jarvis.Console
     {
         #region Methods
 
+        //private static ChatConversation CreateConversation()
+        //{
+        //    ChatConversation conversation = new ChatConversation();
+
+        //    conversation.AddSystemMessage(JarvisSystemPrompt.Content);
+
+        //    return conversation;
+        //}
+
         private static ChatConversation CreateConversation()
         {
-            ChatConversation conversation = new ChatConversation();
-
-            conversation.AddSystemMessage(JarvisSystemPrompt.Content);
-
-            return conversation;
+            return new ChatConversation();
         }
 
         private static async Task Main(string[] args)
@@ -95,10 +100,10 @@ namespace Dadpul.Jarvis.Console
                   "Embedded small model configuration is missing.");
 
             models.Add(
-               new LLamaSharpChatModel(largeOptions));
+               new LLamaSharpChatModel(largeOptions, new EmbeddedFallbackSystemPrompt()));
 
             models.Add(
-               new LLamaSharpChatModel(smallOptions));
+               new LLamaSharpChatModel(smallOptions, new EmbeddedEmergencyFallbackSystemPrompt()));
 
 
 
