@@ -164,10 +164,12 @@ namespace Dadpul.Jarvis.Console
 
         private static async Task  StartOllama(OllamaOptions ollamaOptions, HttpClient httpClient, CompositionBatch compositionBatch, CancellationTokenSource cancellationTokenSource)
         {
-                       
 
+
+            var models = new List<IChatModel>();
             IChatModel chatModel = new OllamaChatModel(httpClient, ollamaOptions);
-            IChatModelSelector chatModelSelector =   new ChatModelSelector(chatModel);
+            models.Add(chatModel);
+            IChatModelSelector chatModelSelector =   new ChatModelSelector(models);
             IEmbeddingGenerator embeddingGenerator = new OllamaEmbeddingGenerator(httpClient, ollamaOptions);
 
             compositionBatch.AddExportedValue(chatModelSelector);

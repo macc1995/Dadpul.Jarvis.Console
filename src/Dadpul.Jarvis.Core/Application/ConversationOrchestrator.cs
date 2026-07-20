@@ -57,6 +57,11 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
    {
         IChatModel chatModel =
    await chatModelSelector.SelectAsync(cancellationToken);
+        if(chatModel is null)
+        {
+            Console.WriteLine("No model found!");
+            yield break;
+        }
         IReadOnlyList<ChatToolDefinition> toolDefinitions = toolRegistry.Tools.Select(ConvertTool).ToList();
 
       const int maximumIterations = 10;

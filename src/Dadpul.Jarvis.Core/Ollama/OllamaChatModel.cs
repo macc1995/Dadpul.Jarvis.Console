@@ -161,5 +161,28 @@ public sealed class OllamaChatModel : IChatModel
       return new OllamaToolCall { Function = new OllamaCalledFunction { Index = index, Name = toolCall.Name, Arguments = toolCall.Arguments } };
    }
 
-   #endregion
+    public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using HttpResponseMessage response =
+               await httpClient.GetAsync(
+                  "api/tags",
+                  cancellationToken);
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException)
+        {
+            return false;
+        }
+        catch (TaskCanceledException)
+           when (!cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+
+    #endregion
 }
+

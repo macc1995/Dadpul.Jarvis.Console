@@ -95,6 +95,10 @@ public sealed class JarvisApplication
 
       await foreach (var chunk in orchestrator.RespondAsync(conversation, cancellationToken))
       {
+            if(chunk is null)
+            {
+                return;
+            }
          if (!string.IsNullOrEmpty(chunk.Content))
          {
             await frontend.WriteResponseChunkAsync(conversationId, chunk.Content, cancellationToken);

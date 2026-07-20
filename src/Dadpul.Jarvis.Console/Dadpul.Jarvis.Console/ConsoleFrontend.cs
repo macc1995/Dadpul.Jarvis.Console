@@ -13,7 +13,9 @@ public sealed class ConsoleFrontend : IFrontend
 
    public Task BeginResponseAsync(string conversationId, CancellationToken cancellationToken)
    {
+      Console.ForegroundColor = ConsoleColor.Green;
       Console.Write("JARVIS: ");
+      Console.ForegroundColor = ConsoleColor.White;
 
       return Task.CompletedTask;
    }
@@ -21,9 +23,9 @@ public sealed class ConsoleFrontend : IFrontend
    public Task CompleteResponseAsync(string conversationId, ChatMetrics? metrics, CancellationToken cancellationToken)
    {
       Console.WriteLine();
-
+        Console.ForegroundColor = ConsoleColor.Yellow;
       PrintMetrics(metrics);
-
+        Console.ForegroundColor= ConsoleColor.White;
       Console.WriteLine();
 
       return Task.CompletedTask;
@@ -82,7 +84,9 @@ public sealed class ConsoleFrontend : IFrontend
    {
       if (!string.IsNullOrEmpty(content))
       {
+            Console.ForegroundColor = ConsoleColor.Green;
          Console.Write(content);
+            Console.ForegroundColor = ConsoleColor.White;
       }
 
       return Task.CompletedTask;

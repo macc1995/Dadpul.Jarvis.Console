@@ -4,6 +4,7 @@ using System.Text;
 
 namespace Dadpul.Jarvis.Core.Chat
 {
+    
     public interface IChatModelSelector
     {
         Task<IChatModel> SelectAsync(CancellationToken cancellationToken);
@@ -12,26 +13,35 @@ namespace Dadpul.Jarvis.Core.Chat
     {
         #region Constants and Fields
 
-        private readonly IChatModel primaryModel;
-
+        
+        private readonly IEnumerable<IChatModel> models;
         #endregion
 
         #region Constructors and Destructors
 
-        public ChatModelSelector(IChatModel primaryModel)
+        public ChatModelSelector(IEnumerable<IChatModel> models)
         {
-            this.primaryModel = primaryModel;
+            this.models = models;
         }
 
         #endregion
 
         #region IChatModelSelector Members
 
-        public Task<IChatModel> SelectAsync(CancellationToken cancellationToken)
+        public async Task<IChatModel> SelectAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            return Task.FromResult(primaryModel);
+            foreach (var model in models) 
+            {
+                if (await model.IsAvailableAsync(cancellationToken))
+                {
+                    Console.WriteLine($"{model.Descriptor.Name} Available.");
+                    return model;
+                }
+            }
+            return null;
+            
         }
 
         #endregion

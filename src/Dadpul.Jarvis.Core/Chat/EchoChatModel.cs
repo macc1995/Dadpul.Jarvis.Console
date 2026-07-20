@@ -23,5 +23,10 @@ internal sealed class EchoChatModel : IChatModel
       yield return responseEnd;
    }
 
-   #endregion
+    public Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(true);
+    }
+
+    #endregion
 }
