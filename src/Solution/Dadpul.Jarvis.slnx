@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/Tools/">
     <Project Path="../Dadpul.Jarvis.Tools.Docker/Dadpul.Jarvis.Tools.Docker.csproj" Id="a9b1e9f1-6d27-4369-84bd-988f2d83435d" />
+    <Project Path="../Dadpul.Jarvis.Tools.GitHub/Dadpul.Jarvis.Tools.GitHub.csproj" Id="0bb6dd32-d22c-48c1-acb2-bc80c6ecdf93" />
     <Project Path="../Dadpul.Jarvis.Tools.Lights/Dadpul.Jarvis.Tools.Lights.csproj" Id="6b8ea339-8428-4eaa-a190-a688946787c5" />
     <Project Path="../Dadpul.Jarvis.Tools.Memory/Dadpul.Jarvis.Tools.Memory.csproj" Id="4f28d4d4-d82e-49dc-9da7-c75791413fcd" />
     <Project Path="../Dadpul.Jarvis.Tools.WebSearch/Dadpul.Jarvis.Tools.WebSearch.csproj" Id="aa53b2a5-7a0b-4652-bd36-c2c569b9697d" />
