@@ -138,9 +138,9 @@ internal sealed class GitHubApiClient : IGitHubApiClient, IDisposable
    {
       var value = uri.AbsoluteUri;
 
-      return value.EndsWith('/', StringComparison.Ordinal)
+      return value.EndsWith("/", StringComparison.Ordinal)
                 ? uri
-                : new Uri(value + '/', UriKind.Absolute);
+                : new Uri(value + "/", UriKind.Absolute);
    }
 
    private static async Task EnsureSuccessfulAsync(
