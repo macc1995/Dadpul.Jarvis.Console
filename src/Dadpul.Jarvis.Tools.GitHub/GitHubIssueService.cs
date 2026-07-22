@@ -70,7 +70,8 @@ internal sealed partial class GitHubIssueService : IGitHubIssueService
       var qualifiers = new List<string>
       {
          $"repo:{repository}",
-         "is:issue"
+         "is:issue",
+         "in:title,body"
       };
 
       if (!request.State.Equals("all", StringComparison.OrdinalIgnoreCase))
@@ -88,7 +89,7 @@ internal sealed partial class GitHubIssueService : IGitHubIssueService
 
       if (!string.IsNullOrWhiteSpace(request.Query))
       {
-         qualifiers.Insert(0, request.Query.Trim());
+         qualifiers.Insert(0, NeutralizeQualifierSyntax(request.Query));
       }
 
       return string.Join(' ', qualifiers);
@@ -102,6 +103,14 @@ internal sealed partial class GitHubIssueService : IGitHubIssueService
 
    private static GitHubIssueSummary MapIssue(GitHubIssueResponse source)
    {
+      if (source.Number <= 0
+          || string.IsNullOrWhiteSpace(source.Title)
+          || string.IsNullOrWhiteSpace(source.State)
+          || string.IsNullOrWhiteSpace(source.HtmlUrl))
+      {
+         throw new GitHubClientException("GitHub returned an incomplete issue search result.");
+      }
+
       var summarySource = string.IsNullOrWhiteSpace(source.Body)
                              ? source.Title
                              : source.Body;
@@ -117,10 +126,15 @@ internal sealed partial class GitHubIssueService : IGitHubIssueService
          source.Number,
          source.Title,
          source.State,
-         source.Labels.Select(label => label.Name).Where(name => !string.IsNullOrWhiteSpace(name)).ToArray()!,
+         source.Labels.Select(label => label.Name).OfType<string>().Where(name => !string.IsNullOrWhiteSpace(name)).ToArray(),
          source.UpdatedAt,
          source.HtmlUrl,
          summary);
+   }
+
+   private static string NeutralizeQualifierSyntax(string value)
+   {
+      return WhitespaceRegex().Replace(value.Replace(':', ' '), " ").Trim();
    }
 
    [GeneratedRegex(@"\s+", RegexOptions.CultureInvariant)]
