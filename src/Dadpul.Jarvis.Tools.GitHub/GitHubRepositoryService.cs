@@ -4,6 +4,7 @@ namespace Dadpul.Jarvis.Tools.GitHub;
 
 using System.ComponentModel.Composition;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -149,9 +150,9 @@ internal sealed class GitHubRepositoryService : IGitHubRepositoryService, IDispo
    {
       var value = uri.AbsoluteUri;
 
-      return value.EndsWith('/', StringComparison.Ordinal)
+      return value.EndsWith("/", StringComparison.Ordinal)
                 ? uri
-                : new Uri(value + '/', UriKind.Absolute);
+                : new Uri(value + "/", UriKind.Absolute);
    }
 
    private static async Task EnsureSuccessfulAsync(
