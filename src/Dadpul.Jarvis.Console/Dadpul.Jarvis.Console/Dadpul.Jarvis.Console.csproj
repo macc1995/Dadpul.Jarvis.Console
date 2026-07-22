@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\Dadpul.Jarvis.Embeddings\Dadpul.Jarvis.Embeddings.csproj" />
     <ProjectReference Include="..\..\Dadpul.Jarvis.Interfaces\Dadpul.Jarvis.Interfaces.csproj" />
     <ProjectReference Include="..\..\Dadpul.Jarvis.LlamaSharp\Dadpul.Jarvis.LlamaSharp.csproj" />
+    <ProjectReference Include="..\..\Dadpul.Jarvis.Tools.GitHub\Dadpul.Jarvis.Tools.GitHub.csproj" />
     <ProjectReference Include="..\..\Dadpul.Jarvis.Tools.Memory\Dadpul.Jarvis.Tools.Memory.csproj" />
   </ItemGroup>
 
