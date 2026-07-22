@@ -16,7 +16,7 @@ public sealed class GitHubOptions
 
    public Uri? ApiBaseAddress { get; set; } = new("https://api.github.com/");
 
-   public string ApiVersion { get; set; } = "2026-03-10";
+   public string ApiVersion { get; set; } = "2022-11-28";
 
    public List<string> AllowedRepositories { get; set; } = [];
 
