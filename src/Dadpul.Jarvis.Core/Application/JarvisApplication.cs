@@ -95,10 +95,11 @@ public sealed class JarvisApplication
 
       await foreach (var chunk in orchestrator.RespondAsync(conversation, cancellationToken))
       {
-            if(chunk is null)
-            {
-                return;
-            }
+         if (chunk is null)
+         {
+            return;
+         }
+
          if (!string.IsNullOrEmpty(chunk.Content))
          {
             await frontend.WriteResponseChunkAsync(conversationId, chunk.Content, cancellationToken);
@@ -138,28 +139,6 @@ public sealed class JarvisApplication
          Console.WriteLine($"Frontend '{frontend.Name}' failed: {exception}");
       }
    }
-
-   #endregion
-}
-
-public sealed class ConversationSession
-{
-   #region Constructors and Destructors
-
-   public ConversationSession(ChatConversation conversation)
-   {
-      ArgumentNullException.ThrowIfNull(conversation);
-
-      Conversation = conversation;
-   }
-
-   #endregion
-
-   #region Public Properties
-
-   public ChatConversation Conversation { get; }
-
-   public SemaphoreSlim Lock { get; } = new(1, 1);
 
    #endregion
 }

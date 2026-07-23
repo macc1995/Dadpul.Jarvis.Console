@@ -27,34 +27,22 @@ internal sealed class GitHubRepositoryService : IGitHubRepositoryService
 
    #region IGitHubRepositoryService Members
 
-   public async Task<GitHubRepositoryInfo> GetRepositoryAsync(
-      string? repository,
-      CancellationToken cancellationToken)
+   public async Task<GitHubRepositoryInfo> GetRepositoryAsync(string? repository, CancellationToken cancellationToken)
    {
       var selectedRepository = apiClient.ResolveRepository(repository);
       var segments = selectedRepository.Split('/');
-      var response = await apiClient.GetAsync<GitHubRepositoryResponse>(
-         selectedRepository,
-         $"repos/{Uri.EscapeDataString(segments[0])}/{Uri.EscapeDataString(segments[1])}",
-         cancellationToken);
+      var response = await apiClient.GetAsync<GitHubRepositoryResponse>(selectedRepository,
+         $"repos/{Uri.EscapeDataString(segments[0])}/{Uri.EscapeDataString(segments[1])}", cancellationToken);
 
-      if (string.IsNullOrWhiteSpace(response.FullName)
-          || string.IsNullOrWhiteSpace(response.DefaultBranch)
-          || string.IsNullOrWhiteSpace(response.HtmlUrl)
-          || string.IsNullOrWhiteSpace(response.Owner?.Login))
+      if (string.IsNullOrWhiteSpace(response.FullName) || string.IsNullOrWhiteSpace(response.DefaultBranch)
+                                                       || string.IsNullOrWhiteSpace(response.HtmlUrl)
+                                                       || string.IsNullOrWhiteSpace(response.Owner?.Login))
       {
-         throw new GitHubClientException(
-            $"GitHub returned an incomplete repository response for '{selectedRepository}'.");
+         throw new GitHubClientException($"GitHub returned an incomplete repository response for '{selectedRepository}'.");
       }
 
-      return new GitHubRepositoryInfo(
-         response.FullName,
-         response.Owner.Login,
-         response.DefaultBranch,
-         response.Visibility ?? (response.Private ? "private" : "public"),
-         response.Private,
-         response.Archived,
-         response.Description,
+      return new GitHubRepositoryInfo(response.FullName, response.Owner.Login, response.DefaultBranch,
+         response.Visibility ?? (response.Private ? "private" : "public"), response.Private, response.Archived, response.Description,
          response.HtmlUrl);
    }
 
@@ -64,35 +52,34 @@ internal sealed class GitHubRepositoryService : IGitHubRepositoryService
 
    private sealed class GitHubOwnerResponse
    {
-      [JsonPropertyName("login")]
-      public string? Login { get; init; }
+      #region Public Properties
+
+      [JsonPropertyName("login")] public string? Login { get; init; }
+
+      #endregion
    }
 
    private sealed class GitHubRepositoryResponse
    {
-      [JsonPropertyName("archived")]
-      public bool Archived { get; init; }
+      #region Public Properties
 
-      [JsonPropertyName("default_branch")]
-      public string? DefaultBranch { get; init; }
+      [JsonPropertyName("archived")] public bool Archived { get; init; }
 
-      [JsonPropertyName("description")]
-      public string? Description { get; init; }
+      [JsonPropertyName("default_branch")] public string? DefaultBranch { get; init; }
 
-      [JsonPropertyName("full_name")]
-      public string? FullName { get; init; }
+      [JsonPropertyName("description")] public string? Description { get; init; }
 
-      [JsonPropertyName("html_url")]
-      public string? HtmlUrl { get; init; }
+      [JsonPropertyName("full_name")] public string? FullName { get; init; }
 
-      [JsonPropertyName("owner")]
-      public GitHubOwnerResponse? Owner { get; init; }
+      [JsonPropertyName("html_url")] public string? HtmlUrl { get; init; }
 
-      [JsonPropertyName("private")]
-      public bool Private { get; init; }
+      [JsonPropertyName("owner")] public GitHubOwnerResponse? Owner { get; init; }
 
-      [JsonPropertyName("visibility")]
-      public string? Visibility { get; init; }
+      [JsonPropertyName("private")] public bool Private { get; init; }
+
+      [JsonPropertyName("visibility")] public string? Visibility { get; init; }
+
+      #endregion
    }
 
    #endregion

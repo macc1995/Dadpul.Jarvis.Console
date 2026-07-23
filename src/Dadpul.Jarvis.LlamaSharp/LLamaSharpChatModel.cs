@@ -1,306 +1,246 @@
-﻿using Dadpul.Jarvis.Core.Chat;
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.LlamaSharp
-   
+
 {
-    using Dadpul.Jarvis.Core.Conversation;
-    using LLama;
-    using LLama.Common;
-    using System.Runtime.CompilerServices;
+   using System.Runtime.CompilerServices;
 
-    using LLama.Sampling;
-    using LLama.Transformers;
-    using Dadpul.Jarvis.Core.Application.Propmpts;
+   using Dadpul.Jarvis.Core.Application.Propmpts;
+   using Dadpul.Jarvis.Core.Chat;
+   using Dadpul.Jarvis.Core.Conversation;
 
-    public sealed class LLamaSharpChatModel : IChatModel, IDisposable
-    {
-        private static ChatHistory CreateChatHistory(
-   IReadOnlyList<ChatMessage> messages)
-        {
-            ChatHistory history = new ChatHistory();
+   using LLama;
+   using LLama.Common;
+   using LLama.Sampling;
+   using LLama.Transformers;
 
-            foreach (ChatMessage message in messages)
+   public sealed class LLamaSharpChatModel : IChatModel, IDisposable
+   {
+      #region Constants and Fields
+
+      private readonly string modelPath;
+
+      ISystemPrompt systemPrompt;
+
+      #endregion
+
+      #region Constructors and Destructors
+
+      public LLamaSharpChatModel(LLamaSharpModelOptions options, ISystemPrompt systemPrompt)
+      {
+         this.systemPrompt = systemPrompt;
+         ArgumentNullException.ThrowIfNull(options);
+
+         this.options = options;
+         modelPath = Path.IsPathRooted(options.ModelPath) ? options.ModelPath : Path.GetFullPath(options.ModelPath, AppContext.BaseDirectory);
+      }
+
+      #endregion
+
+      #region IChatModel Members
+
+      public ChatModelDescriptor Descriptor => new(options.Name, options.Capabilities, true);
+
+      public int Priority => options.Priority;
+
+      public ISystemPrompt SystemPrompt => systemPrompt;
+
+      public async IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(IReadOnlyList<ChatMessage> messages,
+         IReadOnlyList<ChatToolDefinition> tools, [EnumeratorCancellation] CancellationToken cancellationToken)
+      {
+         var model = await GetWeightsAsync(cancellationToken);
+
+         var modelParameters = CreateModelParameters();
+
+         using var context = model.CreateContext(modelParameters);
+
+         var executor = new InteractiveExecutor(context);
+
+         var history = CreateChatHistory(messages);
+
+         var session = new ChatSession(executor);
+
+         session.WithHistoryTransform(new PromptTemplateTransformer(model, withAssistant: true));
+
+         var inferenceParameters = new InferenceParams { MaxTokens = 512, SamplingPipeline = new DefaultSamplingPipeline { Temperature = 0.6f } };
+
+         await foreach (var content in session.ChatAsync(history, inferenceParameters, cancellationToken))
+         {
+            if (string.IsNullOrEmpty(content))
             {
-                switch (message.Role)
-                {
-                    case ChatRole.System:
-                        history.AddMessage(
-                           AuthorRole.System,
-                           message.Content);
-                        break;
-
-                    case ChatRole.User:
-                        history.AddMessage(
-                           AuthorRole.User,
-                           message.Content);
-                        break;
-
-                    case ChatRole.Assistant:
-                        history.AddMessage(
-                           AuthorRole.Assistant,
-                           message.Content);
-                        break;
-
-                    case ChatRole.Tool:
-                        // ConversationOnly models cannot represent tool messages.
-                        break;
-
-                    default:
-                        throw new ArgumentOutOfRangeException(
-                           nameof(message.Role),
-                           message.Role,
-                           "Unsupported chat role.");
-                }
+               continue;
             }
 
-            if (history.Messages.Count == 0)
+            yield return new ChatResponseChunk { Content = content };
+         }
+
+         yield return new ChatResponseChunk { Done = true };
+      }
+
+      public Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
+      {
+         cancellationToken.ThrowIfCancellationRequested();
+
+         if (disposed || string.IsNullOrWhiteSpace(modelPath) || !File.Exists(modelPath))
+         {
+            return Task.FromResult(false);
+         }
+
+         if (weights is not null)
+         {
+            return Task.FromResult(true);
+         }
+
+         if (options.MinMemory <= 0)
+         {
+            return Task.FromResult(true);
+         }
+
+         var availableMemory = GetAvailableMemoryInMegabytes();
+
+         return Task.FromResult(availableMemory >= options.MinMemory);
+      }
+
+      #endregion
+
+      #region IDisposable Members
+
+      public void Dispose()
+      {
+         if (disposed)
+         {
+            return;
+         }
+
+         disposed = true;
+
+         weights?.Dispose();
+         loadingLock.Dispose();
+      }
+
+      #endregion
+
+      #region Methods
+
+      private static ChatHistory CreateChatHistory(IReadOnlyList<ChatMessage> messages)
+      {
+         var history = new ChatHistory();
+
+         foreach (var message in messages)
+         {
+            switch (message.Role)
             {
-                throw new InvalidOperationException(
-                   "The chat history is empty.");
+               case ChatRole.System:
+                  history.AddMessage(AuthorRole.System, message.Content);
+                  break;
+
+               case ChatRole.User:
+                  history.AddMessage(AuthorRole.User, message.Content);
+                  break;
+
+               case ChatRole.Assistant:
+                  history.AddMessage(AuthorRole.Assistant, message.Content);
+                  break;
+
+               case ChatRole.Tool:
+                  // ConversationOnly models cannot represent tool messages.
+                  break;
+
+               default:
+                  throw new ArgumentOutOfRangeException(nameof(message.Role), message.Role, "Unsupported chat role.");
             }
+         }
 
-            if (history.Messages[^1].AuthorRole != AuthorRole.User)
-            {
-                throw new InvalidOperationException(
-                   "The final message must be a user message.");
-            }
+         if (history.Messages.Count == 0)
+         {
+            throw new InvalidOperationException("The chat history is empty.");
+         }
 
-            return history;
-        }
-        private static long GetAvailableMemoryInMegabytes()
-        {
-            GCMemoryInfo memoryInfo = GC.GetGCMemoryInfo();
+         if (history.Messages[^1].AuthorRole != AuthorRole.User)
+         {
+            throw new InvalidOperationException("The final message must be a user message.");
+         }
 
-            long totalMemory = memoryInfo.TotalAvailableMemoryBytes;
-            long highMemoryThreshold = memoryInfo.HighMemoryLoadThresholdBytes;
+         return history;
+      }
 
-            long safeMemoryLimit;
+      private static long GetAvailableMemoryInMegabytes()
+      {
+         var memoryInfo = GC.GetGCMemoryInfo();
 
-            if (totalMemory > 0 && highMemoryThreshold > 0)
-            {
-                safeMemoryLimit = Math.Min(
-                   totalMemory,
-                   highMemoryThreshold);
-            }
-            else
-            {
-                safeMemoryLimit = Math.Max(
-                   totalMemory,
-                   highMemoryThreshold);
-            }
+         var totalMemory = memoryInfo.TotalAvailableMemoryBytes;
+         var highMemoryThreshold = memoryInfo.HighMemoryLoadThresholdBytes;
 
-            if (safeMemoryLimit <= 0)
-            {
-                // Do not reject every model merely because memory information
-                // was unavailable.
-                return long.MaxValue;
-            }
+         long safeMemoryLimit;
 
-            long availableMemory = Math.Max(
-               0,
-               safeMemoryLimit - memoryInfo.MemoryLoadBytes);
+         if ((totalMemory > 0) && (highMemoryThreshold > 0))
+         {
+            safeMemoryLimit = Math.Min(totalMemory, highMemoryThreshold);
+         }
+         else
+         {
+            safeMemoryLimit = Math.Max(totalMemory, highMemoryThreshold);
+         }
 
-            return availableMemory / (1024L * 1024L);
-        }
-        #region Fields
+         if (safeMemoryLimit <= 0)
+         {
+            // Do not reject every model merely because memory information
+            // was unavailable.
+            return long.MaxValue;
+         }
 
-        private readonly SemaphoreSlim loadingLock = new(1, 1);
+         var availableMemory = Math.Max(0, safeMemoryLimit - memoryInfo.MemoryLoadBytes);
 
-        private readonly LLamaSharpModelOptions options;
+         return availableMemory / (1024L * 1024L);
+      }
 
-        private LLamaWeights? weights;
+      private ModelParams CreateModelParameters()
+      {
+         return new ModelParams(options.ModelPath) { ContextSize = (uint)options.ContextSize, GpuLayerCount = options.GpuLayerCount };
+      }
 
-        private bool disposed;
+      private async Task<LLamaWeights> GetWeightsAsync(CancellationToken cancellationToken)
+      {
+         ObjectDisposedException.ThrowIf(disposed, this);
 
-        #endregion
+         if (weights is not null)
+         {
+            return weights;
+         }
 
-        #region Constructors and Destructors
-        ISystemPrompt systemPrompt;
-        public LLamaSharpChatModel(LLamaSharpModelOptions options, ISystemPrompt systemPrompt)
-        {
-            this.systemPrompt = systemPrompt;
-            ArgumentNullException.ThrowIfNull(options);
+         await loadingLock.WaitAsync(cancellationToken);
 
-            this.options = options;
-            modelPath = Path.IsPathRooted(options.ModelPath)
-     ? options.ModelPath
-     : Path.GetFullPath(
-        options.ModelPath,
-        AppContext.BaseDirectory);
-        }
-
-        #endregion
-
-        #region Public Properties
-
-        public ChatModelDescriptor Descriptor =>
-           new(
-              options.Name,
-              options.Capabilities,
-              true);
-
-        public int Priority => options.Priority;
-
-        public ISystemPrompt SystemPrompt => systemPrompt;
-
-        public async IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(
-   IReadOnlyList<ChatMessage> messages,
-   IReadOnlyList<ChatToolDefinition> tools,
-   [EnumeratorCancellation]
-   CancellationToken cancellationToken)
-        {
-            LLamaWeights model =
-               await GetWeightsAsync(cancellationToken);
-
-            ModelParams modelParameters =
-               CreateModelParameters();
-
-            using LLamaContext context =
-               model.CreateContext(modelParameters);
-
-            InteractiveExecutor executor =
-               new InteractiveExecutor(context);
-
-            ChatHistory history =
-               CreateChatHistory(messages);
-
-            ChatSession session =
-               new ChatSession(executor);
-
-            session.WithHistoryTransform(
-               new PromptTemplateTransformer(
-                  model,
-                  withAssistant: true));
-
-            InferenceParams inferenceParameters =
-               new InferenceParams
-               {
-                   MaxTokens = 512,
-
-                   SamplingPipeline =
-                     new DefaultSamplingPipeline
-                     {
-                         Temperature = 0.6f
-                     }
-               };
-
-            await foreach (
-               string content in session.ChatAsync(
-                  history,
-                  inferenceParameters,
-                  cancellationToken))
-            {
-                if (string.IsNullOrEmpty(content))
-                {
-                    continue;
-                }
-
-                yield return new ChatResponseChunk
-                {
-                    Content = content
-                };
-            }
-
-            yield return new ChatResponseChunk
-            {
-                Done = true
-            };
-        }
-
-        private readonly string modelPath;
-
-
-        private async Task<LLamaWeights> GetWeightsAsync(
-   CancellationToken cancellationToken)
-        {
-            ObjectDisposedException.ThrowIf(
-               disposed,
-               this);
-
+         try
+         {
             if (weights is not null)
             {
-                return weights;
+               return weights;
             }
 
-            await loadingLock.WaitAsync(cancellationToken);
+            var modelParameters = CreateModelParameters();
 
-            try
-            {
-                if (weights is not null)
-                {
-                    return weights;
-                }
+            weights = await Task.Run(() => LLamaWeights.LoadFromFile(modelParameters), cancellationToken);
 
-                var modelParameters = CreateModelParameters();
+            return weights;
+         }
+         finally
+         {
+            loadingLock.Release();
+         }
+      }
 
-                weights = await Task.Run(
-                   () => LLamaWeights.LoadFromFile(modelParameters),
-                   cancellationToken);
+      #endregion
 
-                return weights;
-            }
-            finally
-            {
-                loadingLock.Release();
-            }
-        }
+      #region Fields
 
-        public void Dispose()
-        {
-            if (disposed)
-            {
-                return;
-            }
+      private readonly SemaphoreSlim loadingLock = new(1, 1);
 
-            disposed = true;
+      private readonly LLamaSharpModelOptions options;
 
-            weights?.Dispose();
-            loadingLock.Dispose();
-        }
+      private LLamaWeights? weights;
 
+      private bool disposed;
 
-        public Task<bool> IsAvailableAsync(
-   CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (disposed
-                || string.IsNullOrWhiteSpace(modelPath)
-                || !File.Exists(modelPath))
-            {
-                return Task.FromResult(false);
-            }
-
-            if (weights is not null)
-            {
-                return Task.FromResult(true);
-            }
-
-            if (options.MinMemory <= 0)
-            {
-                return Task.FromResult(true);
-            }
-
-            long availableMemory = GetAvailableMemoryInMegabytes();
-
-            return Task.FromResult(
-               availableMemory >= options.MinMemory);
-        }
-        private ModelParams CreateModelParameters()
-        {
-            return new ModelParams(options.ModelPath)
-            {
-                ContextSize = (uint)options.ContextSize,
-                GpuLayerCount = options.GpuLayerCount
-            };
-        }
-        #endregion
-    }
-
-    public class LlamaSharpSystemPrompt
-    {
-        public string Prompt { get; } = """
-
-            """;
-    }
+      #endregion
+   }
 }

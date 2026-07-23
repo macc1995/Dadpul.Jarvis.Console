@@ -60,10 +60,6 @@ internal sealed class JsonMemoryStore : IMemoryStore
       }
    }
 
-   #endregion
-
-   #region Public Methods and Operators
-
    public async Task<IReadOnlyList<MemoryRecord>> GetAllAsync(CancellationToken cancellationToken)
    {
       await fileLock.WaitAsync(cancellationToken);
@@ -71,28 +67,6 @@ internal sealed class JsonMemoryStore : IMemoryStore
       try
       {
          return await LoadMemoriesAsync(cancellationToken);
-      }
-      finally
-      {
-         fileLock.Release();
-      }
-   }
-
-   public async Task<IReadOnlyList<MemoryRecord>> SearchAsync(string query, CancellationToken cancellationToken)
-   {
-      if (string.IsNullOrWhiteSpace(query))
-      {
-         return Array.Empty<MemoryRecord>();
-      }
-
-      await fileLock.WaitAsync(cancellationToken);
-
-      try
-      {
-         var memories = await LoadMemoriesAsync(cancellationToken);
-
-         return memories.Where(memory => memory.Content.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(memory => memory.UpdatedAt ?? memory.CreatedAt).ToList();
       }
       finally
       {
@@ -118,6 +92,32 @@ internal sealed class JsonMemoryStore : IMemoryStore
          memories.Add(memory);
 
          await SaveMemoriesAsync(memories, cancellationToken);
+      }
+      finally
+      {
+         fileLock.Release();
+      }
+   }
+
+   #endregion
+
+   #region Public Methods and Operators
+
+   public async Task<IReadOnlyList<MemoryRecord>> SearchAsync(string query, CancellationToken cancellationToken)
+   {
+      if (string.IsNullOrWhiteSpace(query))
+      {
+         return Array.Empty<MemoryRecord>();
+      }
+
+      await fileLock.WaitAsync(cancellationToken);
+
+      try
+      {
+         var memories = await LoadMemoriesAsync(cancellationToken);
+
+         return memories.Where(memory => memory.Content.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(memory => memory.UpdatedAt ?? memory.CreatedAt).ToList();
       }
       finally
       {

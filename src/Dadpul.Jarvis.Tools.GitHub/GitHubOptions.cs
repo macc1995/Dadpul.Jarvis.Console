@@ -14,11 +14,11 @@ public sealed class GitHubOptions
 
    #region Public Properties
 
+   public List<string> AllowedRepositories { get; set; } = [];
+
    public Uri? ApiBaseAddress { get; set; } = new("https://api.github.com/");
 
    public string ApiVersion { get; set; } = "2022-11-28";
-
-   public List<string> AllowedRepositories { get; set; } = [];
 
    public string DefaultRepository { get; set; } = string.Empty;
 

@@ -1,5 +1,5 @@
-﻿namespace Dadpul.Jarvis.Docker.Contracts;
+﻿// Made by Dadpul
 
-public sealed record DockerNodeFailure(
-    string Node,
-    string Error);
+namespace Dadpul.Jarvis.Docker.Contracts;
+
+public sealed record DockerNodeFailure(string Node, string Error);

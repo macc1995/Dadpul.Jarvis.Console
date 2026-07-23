@@ -6,19 +6,13 @@ using System.ComponentModel.Composition;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 using Dadpul.Jarvis.Core.Chat;
 using Dadpul.Jarvis.Core.Conversation;
-using Dadpul.Jarvis.Core.Tools;
 using Dadpul.Jarvis.Interfaces.Tools;
 using Dadpul.Jarvis.Interfaces.Tools.Memory;
 
 using Console = System.Console;
-
-internal sealed record ToolExecutionRecord(string ToolName, JsonObject Arguments, bool Success, string Result);
-
-internal sealed record ResponseVerificationResult(bool Valid, string? Reason);
 
 [Export(typeof(IConversationOrchestrator))]
 public sealed class ConversationOrchestrator : IConversationOrchestrator
@@ -38,65 +32,36 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
    #region Constructors and Destructors
 
    [ImportingConstructor]
-    public ConversationOrchestrator(
-   IChatModelSelector chatModelSelector,
-   IMemoryRetriever memoryRetriever,
-   IToolRegistry toolRegistry)
-    {
-        this.chatModelSelector = chatModelSelector;
-        this.memoryRetriever = memoryRetriever;
-        this.toolRegistry = toolRegistry;
-    }
+   public ConversationOrchestrator(IChatModelSelector chatModelSelector, IMemoryRetriever memoryRetriever, IToolRegistry toolRegistry)
+   {
+      this.chatModelSelector = chatModelSelector;
+      this.memoryRetriever = memoryRetriever;
+      this.toolRegistry = toolRegistry;
+   }
 
-    #endregion
+   #endregion
 
-    #region IConversationOrchestrator Members
-    private async Task<IReadOnlyList<MemoryMatch>> RetrieveMemoriesAsync(
-   IChatModel chatModel,
-   ChatMessage? latestUserMessage,
-   CancellationToken cancellationToken)
-    {
-        if (latestUserMessage is null || chatModel.Descriptor.Capabilities < ChatModelCapabilities.FullTools)
-        {
-            return [];
-        }
+   #region IConversationOrchestrator Members
 
-        try
-        {
-            return await memoryRetriever.RetrieveAsync(
-               latestUserMessage.Content,
-               cancellationToken);
-        }
-        catch (OperationCanceledException)
-           when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (HttpRequestException exception)
-        {
-            Console.WriteLine(
-               $"[Memory retrieval unavailable: {exception.Message}]");
-
-            return [];
-        }
-    }
-    public async IAsyncEnumerable<ChatResponseChunk> RespondAsync(ChatConversation conversation,
+   public async IAsyncEnumerable<ChatResponseChunk> RespondAsync(ChatConversation conversation,
       [EnumeratorCancellation] CancellationToken cancellationToken)
    {
-        IChatModel chatModel =
-   await chatModelSelector.SelectAsync(cancellationToken);
-        if(chatModel is null)
-        {
-            Console.WriteLine("No model found!");
-            yield break;
-        }
-        IReadOnlyList<ChatToolDefinition> toolDefinitions = chatModel.Descriptor.Capabilities == ChatModelCapabilities.ConversationOnly? []:  toolRegistry.Tools.Select(ConvertTool).ToList();
+      var chatModel = await chatModelSelector.SelectAsync(cancellationToken);
+      if (chatModel is null)
+      {
+         Console.WriteLine("No model found!");
+         yield break;
+      }
+
+      IReadOnlyList<ChatToolDefinition> toolDefinitions = chatModel.Descriptor.Capabilities == ChatModelCapabilities.ConversationOnly
+         ? []
+         : toolRegistry.Tools.Select(ConvertTool).ToList();
 
       const int maximumIterations = 10;
 
       var latestUserMessage = conversation.Messages.LastOrDefault(message => message.Role == ChatRole.User);
 
-        var relevantMemories = latestUserMessage is null ? [] : await RetrieveMemoriesAsync(chatModel, latestUserMessage, cancellationToken);
+      var relevantMemories = latestUserMessage is null ? [] : await RetrieveMemoriesAsync(chatModel, latestUserMessage, cancellationToken);
 
       /*
        * These records cover the complete current user turn, including
@@ -123,13 +88,8 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
           */
          var bufferedVisibleChunks = new List<ChatResponseChunk>();
 
-         var requestMessages =
-      BuildRequestMessages(
-         chatModel,
-         conversation,
-         relevantMemories,
-         correctionMessages);
-            await foreach (var chunk in chatModel.GenerateResponseAsync(requestMessages, toolDefinitions, cancellationToken))
+         var requestMessages = BuildRequestMessages(chatModel, conversation, relevantMemories, correctionMessages);
+         await foreach (var chunk in chatModel.GenerateResponseAsync(requestMessages, toolDefinitions, cancellationToken))
          {
             if (!string.IsNullOrEmpty(chunk.Content))
             {
@@ -153,48 +113,42 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
 
          if (toolCalls.Count == 0)
          {
-                if (chatModel.Descriptor.Capabilities !=
-       ChatModelCapabilities.ConversationOnly)
-                {
-                    var draft = assistantContent.ToString();
+            if (chatModel.Descriptor.Capabilities != ChatModelCapabilities.ConversationOnly)
+            {
+               var draft = assistantContent.ToString();
 
-                    var verification = await VerifyResponseAsync(
-           chatModel,
-           requestMessages,
-           draft,
-           executions,
-           cancellationToken);
-                    if (!verification.Valid)
-                    {
-                        Console.WriteLine("verification invalid");
-                        var message = $"""
-                              Your previous proposed response was rejected because it was
-                              not grounded in the actual tool executions from this turn.
+               var verification = await VerifyResponseAsync(chatModel, requestMessages, draft, executions, cancellationToken);
+               if (!verification.Valid)
+               {
+                  Console.WriteLine("verification invalid");
+                  var message = $"""
+                                 Your previous proposed response was rejected because it was
+                                 not grounded in the actual tool executions from this turn.
 
-                              Rejected response:
-                              <rejected-response>
-                              {draft}
-                              </rejected-response>
+                                 Rejected response:
+                                 <rejected-response>
+                                 {draft}
+                                 </rejected-response>
 
-                              Verification failure:
-                              {verification.Reason}
+                                 Verification failure:
+                                 {verification.Reason}
 
-                              Continue fulfilling the user's original request.
+                                 Continue fulfilling the user's original request.
 
-                              Do not repeat an unsupported claim.
-                              If an operation is still required, actually call the needed
-                              tool.
-                              If a tool failed, accurately report the failure.
-                              If the request is already complete, provide a corrected
-                              response supported by the tool results.
-                              """;
+                                 Do not repeat an unsupported claim.
+                                 If an operation is still required, actually call the needed
+                                 tool.
+                                 If a tool failed, accurately report the failure.
+                                 If the request is already complete, provide a corrected
+                                 response supported by the tool results.
+                                 """;
 
-                        Console.WriteLine(message);
-                        correctionMessages.Add(new ChatMessage(ChatRole.System, message));
+                  Console.WriteLine(message);
+                  correctionMessages.Add(new ChatMessage(ChatRole.System, message));
 
-                        continue;
-                    }
-                }
+                  continue;
+               }
+            }
 
             /*
              * The verifier accepted the draft, so the buffered content can now
@@ -233,26 +187,18 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
       throw new InvalidOperationException($"The model exceeded the maximum of " + $"{maximumIterations} response iterations.");
    }
 
-    #endregion
+   #endregion
 
-    #region Methods
+   #region Methods
 
-    private static IReadOnlyList<ChatMessage> BuildRequestMessages(
-    IChatModel chatModel,
-    ChatConversation conversation,
-    IReadOnlyList<MemoryMatch> relevantMemories,
-    IReadOnlyList<ChatMessage> correctionMessages)
-    {
-        var requestMessages = new List<ChatMessage>
-{
-   new(
-      ChatRole.System,
-      chatModel.SystemPrompt.Content)
-};
+   private static IReadOnlyList<ChatMessage> BuildRequestMessages(IChatModel chatModel, ChatConversation conversation,
+      IReadOnlyList<MemoryMatch> relevantMemories, IReadOnlyList<ChatMessage> correctionMessages)
+   {
+      var requestMessages = new List<ChatMessage> { new(ChatRole.System, chatModel.SystemPrompt.Content) };
 
-        requestMessages.AddRange(conversation.Messages);
+      requestMessages.AddRange(conversation.Messages);
 
-        if (relevantMemories.Count > 0)
+      if (relevantMemories.Count > 0)
       {
          var memoryContent = string.Join(Environment.NewLine, relevantMemories.Select(match => $"""
                                                                                                 <memory>
@@ -351,61 +297,21 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
       }
    }
 
-   private async Task<ToolResult> ExecuteToolAsync(ChatToolCall toolCall, CancellationToken cancellationToken)
+   private static async Task<ResponseVerificationResult> VerifyResponseAsync(IChatModel chatModel, IReadOnlyList<ChatMessage> requestMessages,
+      string assistantDraft, IReadOnlyList<ToolExecutionRecord> executions, CancellationToken cancellationToken)
    {
-      Console.WriteLine();
-      Console.WriteLine($"[Executing tool: {toolCall.Name}]");
-
-      Console.WriteLine($"[Arguments: {toolCall.Arguments.ToJsonString()}]");
-
-      if (!toolRegistry.TryGet(toolCall.Name, out var tool) || tool is null)
-      {
-         return ToolResult.Failed($"The requested tool '{toolCall.Name}' does not exist.");
-      }
-
-      try
-      {
-         return await tool.ExecuteAsync(toolCall.Arguments, cancellationToken);
-      }
-      catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-      {
-         throw;
-      }
-      catch (Exception exception)
-      {
-         return ToolResult.Failed($"Tool execution failed: {exception.Message}");
-      }
-   }
-
-    private static async Task<ResponseVerificationResult> VerifyResponseAsync(
-   IChatModel chatModel,
-   IReadOnlyList<ChatMessage> requestMessages,
-   string assistantDraft,
-   IReadOnlyList<ToolExecutionRecord> executions,
-   CancellationToken cancellationToken)
-    {
-        var verificationPayload = JsonSerializer.Serialize(
-   new
-   {
-       conversationContext = requestMessages.Select(
-         message => new
+      var verificationPayload = JsonSerializer.Serialize(
+         new
          {
-             role = message.Role.ToString(),
-             content = message.Content
-         }),
-       proposedResponse = assistantDraft,
-       toolExecutions = executions.Select(
-         execution => new
-         {
-             toolName = execution.ToolName,
-             arguments = execution.Arguments,
-             success = execution.Success,
-             result = execution.Result
-         })
-   },
-   verifierJsonOptions);
+            conversationContext = requestMessages.Select(message => new { role = message.Role.ToString(), content = message.Content }),
+            proposedResponse = assistantDraft,
+            toolExecutions = executions.Select(execution => new
+            {
+               toolName = execution.ToolName, arguments = execution.Arguments, success = execution.Success, result = execution.Result
+            })
+         }, verifierJsonOptions);
 
-        IReadOnlyList<ChatMessage> verificationMessages =
+      IReadOnlyList<ChatMessage> verificationMessages =
       [
          new ChatMessage(ChatRole.System, """
                                           You are a strict tool-execution grounding verifier.
@@ -495,6 +401,56 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
       }
 
       return ParseVerificationResult(verifierContent.ToString());
+   }
+
+   private async Task<ToolResult> ExecuteToolAsync(ChatToolCall toolCall, CancellationToken cancellationToken)
+   {
+      Console.WriteLine();
+      Console.WriteLine($"[Executing tool: {toolCall.Name}]");
+
+      Console.WriteLine($"[Arguments: {toolCall.Arguments.ToJsonString()}]");
+
+      if (!toolRegistry.TryGet(toolCall.Name, out var tool) || tool is null)
+      {
+         return ToolResult.Failed($"The requested tool '{toolCall.Name}' does not exist.");
+      }
+
+      try
+      {
+         return await tool.ExecuteAsync(toolCall.Arguments, cancellationToken);
+      }
+      catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+      {
+         throw;
+      }
+      catch (Exception exception)
+      {
+         return ToolResult.Failed($"Tool execution failed: {exception.Message}");
+      }
+   }
+
+   private async Task<IReadOnlyList<MemoryMatch>> RetrieveMemoriesAsync(IChatModel chatModel, ChatMessage? latestUserMessage,
+      CancellationToken cancellationToken)
+   {
+      if (latestUserMessage is null || (chatModel.Descriptor.Capabilities < ChatModelCapabilities.FullTools))
+      {
+         return [];
+      }
+
+      try
+      {
+         return await memoryRetriever.RetrieveAsync(latestUserMessage.Content, cancellationToken);
+      }
+      catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+      {
+         throw;
+      }
+      catch (HttpRequestException exception)
+      {
+         Console.WriteLine($"[Memory retrieval unavailable: {exception.Message}]");
+
+         return [];
+      }
    }
 
    #endregion

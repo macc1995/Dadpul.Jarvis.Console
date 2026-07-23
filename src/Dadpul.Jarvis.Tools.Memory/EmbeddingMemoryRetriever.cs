@@ -35,7 +35,7 @@ public sealed class EmbeddingMemoryRetriever : IMemoryRetriever
 
    #endregion
 
-   #region Public Methods and Operators
+   #region IMemoryRetriever Members
 
    public async Task<IReadOnlyList<MemoryMatch>> RetrieveAsync(string query, CancellationToken cancellationToken)
    {

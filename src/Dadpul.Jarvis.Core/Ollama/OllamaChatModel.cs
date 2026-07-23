@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+
 using Dadpul.Jarvis.Core.Application.Propmpts;
 using Dadpul.Jarvis.Core.Chat;
 using Dadpul.Jarvis.Core.Conversation;
@@ -20,17 +21,11 @@ public sealed class OllamaChatModel : IChatModel
 
    private readonly OllamaOptions options;
 
-    public ChatModelDescriptor Descriptor => new ChatModelDescriptor("Ollama", ChatModelCapabilities.FullTools, false);
+   #endregion
 
-    public int Priority => 10;
+   #region Constructors and Destructors
 
-    public ISystemPrompt SystemPrompt => new JarvisSystemPrompt();
-
-    #endregion
-
-    #region Constructors and Destructors
-
-    public OllamaChatModel(HttpClient httpClient, OllamaOptions options)
+   public OllamaChatModel(HttpClient httpClient, OllamaOptions options)
    {
       this.httpClient = httpClient;
       this.options = options;
@@ -39,6 +34,12 @@ public sealed class OllamaChatModel : IChatModel
    #endregion
 
    #region IChatModel Members
+
+   public ChatModelDescriptor Descriptor => new ChatModelDescriptor("Ollama", ChatModelCapabilities.FullTools, false);
+
+   public int Priority => 10;
+
+   public ISystemPrompt SystemPrompt => new JarvisSystemPrompt();
 
    public async IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(IReadOnlyList<ChatMessage> messages,
       IReadOnlyList<ChatToolDefinition> tools, [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -96,6 +97,24 @@ public sealed class OllamaChatModel : IChatModel
 
             yield break;
          }
+      }
+   }
+
+   public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
+   {
+      try
+      {
+         using var response = await httpClient.GetAsync("api/tags", cancellationToken);
+
+         return response.IsSuccessStatusCode;
+      }
+      catch (HttpRequestException)
+      {
+         return false;
+      }
+      catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+      {
+         return false;
       }
    }
 
@@ -165,28 +184,5 @@ public sealed class OllamaChatModel : IChatModel
       return new OllamaToolCall { Function = new OllamaCalledFunction { Index = index, Name = toolCall.Name, Arguments = toolCall.Arguments } };
    }
 
-    public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            using HttpResponseMessage response =
-               await httpClient.GetAsync(
-                  "api/tags",
-                  cancellationToken);
-
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException)
-        {
-            return false;
-        }
-        catch (TaskCanceledException)
-           when (!cancellationToken.IsCancellationRequested)
-        {
-            return false;
-        }
-    }
-
-    #endregion
+   #endregion
 }
-

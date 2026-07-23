@@ -37,8 +37,7 @@ internal sealed class PersonalAccessTokenAuthenticationProvider : IGitHubAuthent
 
       if (string.IsNullOrWhiteSpace(token))
       {
-         throw new GitHubClientException(
-            $"GitHub authentication is not configured. Add '{GitHubOptions.TokenConfigurationKey}' to User Secrets.");
+         throw new GitHubClientException($"GitHub authentication is not configured. Add '{GitHubOptions.TokenConfigurationKey}' to User Secrets.");
       }
 
       request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);

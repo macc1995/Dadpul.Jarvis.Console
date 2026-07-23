@@ -1,5 +1,5 @@
-﻿namespace Dadpul.Jarvis.Docker.Contracts;
+﻿// Made by Dadpul
 
-public sealed record LocatedDockerContainer(
-    string Node,
-    DockerContainerInfo Container);
+namespace Dadpul.Jarvis.Docker.Contracts;
+
+public sealed record LocatedDockerContainer(string Node, DockerContainerInfo Container);

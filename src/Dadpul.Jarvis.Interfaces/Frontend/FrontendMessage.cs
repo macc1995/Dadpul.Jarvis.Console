@@ -3,5 +3,3 @@
 namespace Dadpul.Jarvis.Interfaces.Frontend;
 
 public sealed record FrontendMessage(string Content, string ConversationId);
-
-public sealed record FrontendInput(string Content, string ConversationId);

@@ -6,9 +6,7 @@ internal interface IGitHubIssueService
 {
    #region Public Methods and Operators
 
-   Task<GitHubIssueSearchResult> FindIssuesAsync(
-      GitHubIssueSearchRequest request,
-      CancellationToken cancellationToken);
+   Task<GitHubIssueSearchResult> FindIssuesAsync(GitHubIssueSearchRequest request, CancellationToken cancellationToken);
 
    #endregion
 }

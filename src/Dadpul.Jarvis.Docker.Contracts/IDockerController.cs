@@ -1,8 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IDockerController.cs" company="KUKA Deutschland GmbH">
-//   Copyright (c) KUKA Deutschland GmbH 2006 - 2026
-// </copyright>
-// --------------------------------------------------------------------------------------------------------------------
+﻿// Made by Dadpul
 
 namespace Dadpul.Jarvis.Docker.Contracts;
 

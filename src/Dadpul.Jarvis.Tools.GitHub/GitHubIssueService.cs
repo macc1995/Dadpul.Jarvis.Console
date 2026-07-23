@@ -28,59 +28,36 @@ internal sealed partial class GitHubIssueService : IGitHubIssueService
 
    #region IGitHubIssueService Members
 
-   public async Task<GitHubIssueSearchResult> FindIssuesAsync(
-      GitHubIssueSearchRequest request,
-      CancellationToken cancellationToken)
+   public async Task<GitHubIssueSearchResult> FindIssuesAsync(GitHubIssueSearchRequest request, CancellationToken cancellationToken)
    {
       ArgumentNullException.ThrowIfNull(request);
 
       var repository = apiClient.ResolveRepository(request.Repository);
       var searchQuery = BuildSearchQuery(repository, request);
-      var relativePath = "search/issues?q=" + Uri.EscapeDataString(searchQuery)
-                         + $"&sort={Uri.EscapeDataString(request.Sort)}"
-                         + $"&order={Uri.EscapeDataString(request.Order)}"
-                         + $"&per_page={request.Limit}";
+      var relativePath = "search/issues?q=" + Uri.EscapeDataString(searchQuery) + $"&sort={Uri.EscapeDataString(request.Sort)}"
+                         + $"&order={Uri.EscapeDataString(request.Order)}" + $"&per_page={request.Limit}";
 
-      var response = await apiClient.GetAsync<GitHubIssueSearchResponse>(
-         repository,
-         relativePath,
-         cancellationToken);
+      var response = await apiClient.GetAsync<GitHubIssueSearchResponse>(repository, relativePath, cancellationToken);
 
-      var issues = response.Items
-         .Where(item => item.PullRequest is null)
-         .Take(request.Limit)
-         .Select(MapIssue)
-         .ToArray();
+      var issues = response.Items.Where(item => item.PullRequest is null).Take(request.Limit).Select(MapIssue).ToArray();
 
-      return new GitHubIssueSearchResult(
-         repository,
-         issues,
-         response.TotalCount,
-         response.IncompleteResults);
+      return new GitHubIssueSearchResult(repository, issues, response.TotalCount, response.IncompleteResults);
    }
 
    #endregion
 
    #region Methods
 
-   private static string BuildSearchQuery(
-      string repository,
-      GitHubIssueSearchRequest request)
+   private static string BuildSearchQuery(string repository, GitHubIssueSearchRequest request)
    {
-      var qualifiers = new List<string>
-      {
-         $"repo:{repository}",
-         "is:issue",
-         "in:title,body"
-      };
+      var qualifiers = new List<string> { $"repo:{repository}", "is:issue", "in:title,body" };
 
       if (!request.State.Equals("all", StringComparison.OrdinalIgnoreCase))
       {
          qualifiers.Add($"state:{request.State}");
       }
 
-      qualifiers.AddRange(
-         request.Labels.Select(label => $"label:\"{EscapeQualifier(label)}\""));
+      qualifiers.AddRange(request.Labels.Select(label => $"label:\"{EscapeQualifier(label)}\""));
 
       if (!string.IsNullOrWhiteSpace(request.Assignee))
       {
@@ -97,23 +74,18 @@ internal sealed partial class GitHubIssueService : IGitHubIssueService
 
    private static string EscapeQualifier(string value)
    {
-      return value.Replace("\\", "\\\\", StringComparison.Ordinal)
-         .Replace("\"", "\\\"", StringComparison.Ordinal);
+      return value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
    }
 
    private static GitHubIssueSummary MapIssue(GitHubIssueResponse source)
    {
-      if (source.Number <= 0
-          || string.IsNullOrWhiteSpace(source.Title)
-          || string.IsNullOrWhiteSpace(source.State)
+      if ((source.Number <= 0) || string.IsNullOrWhiteSpace(source.Title) || string.IsNullOrWhiteSpace(source.State)
           || string.IsNullOrWhiteSpace(source.HtmlUrl))
       {
          throw new GitHubClientException("GitHub returned an incomplete issue search result.");
       }
 
-      var summarySource = string.IsNullOrWhiteSpace(source.Body)
-                             ? source.Title
-                             : source.Body;
+      var summarySource = string.IsNullOrWhiteSpace(source.Body) ? source.Title : source.Body;
 
       var summary = WhitespaceRegex().Replace(summarySource, " ").Trim();
 
@@ -122,14 +94,9 @@ internal sealed partial class GitHubIssueService : IGitHubIssueService
          summary = summary[..300] + "…";
       }
 
-      return new GitHubIssueSummary(
-         source.Number,
-         source.Title,
-         source.State,
-         source.Labels.Select(label => label.Name).OfType<string>().Where(name => !string.IsNullOrWhiteSpace(name)).ToArray(),
-         source.UpdatedAt,
-         source.HtmlUrl,
-         summary);
+      return new GitHubIssueSummary(source.Number, source.Title, source.State,
+         source.Labels.Select(label => label.Name).OfType<string>().Where(name => !string.IsNullOrWhiteSpace(name)).ToArray(), source.UpdatedAt,
+         source.HtmlUrl, summary);
    }
 
    private static string NeutralizeQualifierSyntax(string value)
@@ -146,47 +113,48 @@ internal sealed partial class GitHubIssueService : IGitHubIssueService
 
    private sealed class GitHubIssueLabelResponse
    {
-      [JsonPropertyName("name")]
-      public string? Name { get; init; }
+      #region Public Properties
+
+      [JsonPropertyName("name")] public string? Name { get; init; }
+
+      #endregion
    }
 
    private sealed class GitHubIssueResponse
    {
-      [JsonPropertyName("body")]
-      public string? Body { get; init; }
+      #region Public Properties
 
-      [JsonPropertyName("html_url")]
-      public string HtmlUrl { get; init; } = string.Empty;
+      [JsonPropertyName("body")] public string? Body { get; init; }
 
-      [JsonPropertyName("labels")]
-      public List<GitHubIssueLabelResponse> Labels { get; init; } = [];
+      [JsonPropertyName("html_url")] public string HtmlUrl { get; init; } = string.Empty;
 
-      [JsonPropertyName("number")]
-      public int Number { get; init; }
+      [JsonPropertyName("labels")] public List<GitHubIssueLabelResponse> Labels { get; init; } = [];
 
-      [JsonPropertyName("pull_request")]
-      public object? PullRequest { get; init; }
+      [JsonPropertyName("number")] public int Number { get; init; }
 
-      [JsonPropertyName("state")]
-      public string State { get; init; } = string.Empty;
+      [JsonPropertyName("pull_request")] public object? PullRequest { get; init; }
 
-      [JsonPropertyName("title")]
-      public string Title { get; init; } = string.Empty;
+      [JsonPropertyName("state")] public string State { get; init; } = string.Empty;
 
-      [JsonPropertyName("updated_at")]
-      public DateTimeOffset UpdatedAt { get; init; }
+      [JsonPropertyName("title")] public string Title { get; init; } = string.Empty;
+
+      [JsonPropertyName("updated_at")] public DateTimeOffset UpdatedAt { get; init; }
+
+      #endregion
    }
 
    private sealed class GitHubIssueSearchResponse
    {
+      #region Public Properties
+
       [JsonPropertyName("incomplete_results")]
       public bool IncompleteResults { get; init; }
 
-      [JsonPropertyName("items")]
-      public List<GitHubIssueResponse> Items { get; init; } = [];
+      [JsonPropertyName("items")] public List<GitHubIssueResponse> Items { get; init; } = [];
 
-      [JsonPropertyName("total_count")]
-      public int TotalCount { get; init; }
+      [JsonPropertyName("total_count")] public int TotalCount { get; init; }
+
+      #endregion
    }
 
    #endregion

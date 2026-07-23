@@ -1,6 +1,6 @@
 // Made by Dadpul
 
-namespace Dadpul.Jarvis.Tools.GitHub;
+namespace Dadpul.Jarvis.Tools.GitHub.Tools;
 
 using System.ComponentModel.Composition;
 using System.Text.Json;
@@ -47,9 +47,7 @@ internal sealed class GitHubGetRepositoryTool : ITool
          {
             ["repository"] = new JsonObject
             {
-               ["type"] = "string",
-               ["description"] =
-                  "Optional repository in owner/name format. Omit it to use GitHub:DefaultRepository."
+               ["type"] = "string", ["description"] = "Optional repository in owner/name format. Omit it to use GitHub:DefaultRepository."
             }
          },
          ["additionalProperties"] = false
@@ -63,9 +61,7 @@ internal sealed class GitHubGetRepositoryTool : ITool
 
       if (arguments.ContainsKey("repository"))
       {
-         if (arguments["repository"] is not JsonValue jsonValue
-             || !jsonValue.TryGetValue(out repository)
-             || string.IsNullOrWhiteSpace(repository))
+         if (arguments["repository"] is not JsonValue jsonValue || !jsonValue.TryGetValue(out repository) || string.IsNullOrWhiteSpace(repository))
          {
             return ToolResult.Failed("The argument 'repository' must be a non-empty string in owner/name format.");
          }

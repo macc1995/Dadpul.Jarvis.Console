@@ -1,8 +1,5 @@
-﻿namespace Dadpul.Jarvis.Docker.Contracts;
+﻿// Made by Dadpul
 
-public sealed record DockerActionResult(
-    bool Success,
-    string Node,
-    string ContainerId,
-    string ContainerName,
-    string Message);
+namespace Dadpul.Jarvis.Docker.Contracts;
+
+public sealed record DockerActionResult(bool Success, string Node, string ContainerId, string ContainerName, string Message);

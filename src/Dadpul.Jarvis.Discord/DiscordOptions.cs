@@ -4,17 +4,17 @@ namespace Dadpul.Jarvis.Discord;
 
 public sealed class DiscordOptions
 {
-    #region Constants and Fields
+   #region Constants and Fields
 
-    public const string SectionName = "Discord";
+   public const string SectionName = "Discord";
 
-    #endregion
+   #endregion
 
-    #region Public Properties
+   #region Public Properties
 
-    public bool Enabled { get; set; } = true;
+   public bool Enabled { get; set; } = true;
 
-    public string Token { get; set; } = string.Empty;
+   public string Token { get; set; } = string.Empty;
 
-    #endregion
+   #endregion
 }

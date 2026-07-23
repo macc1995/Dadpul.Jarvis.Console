@@ -1,6 +1,6 @@
 // Made by Dadpul
 
-namespace Dadpul.Jarvis.Tools.GitHub;
+namespace Dadpul.Jarvis.Tools.GitHub.Tools;
 
 using System.ComponentModel.Composition;
 using System.Text.Json;
@@ -13,16 +13,13 @@ internal sealed class GitHubFindIssuesTool : ITool
 {
    #region Constants and Fields
 
-   private static readonly HashSet<string> SupportedOrders =
-      new(StringComparer.OrdinalIgnoreCase) { "asc", "desc" };
-
-   private static readonly HashSet<string> SupportedSorts =
-      new(StringComparer.OrdinalIgnoreCase) { "best-match", "created", "updated", "comments" };
-
-   private static readonly HashSet<string> SupportedStates =
-      new(StringComparer.OrdinalIgnoreCase) { "open", "closed", "all" };
-
    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+   private static readonly HashSet<string> SupportedOrders = new(StringComparer.OrdinalIgnoreCase) { "asc", "desc" };
+
+   private static readonly HashSet<string> SupportedSorts = new(StringComparer.OrdinalIgnoreCase) { "best-match", "created", "updated", "comments" };
+
+   private static readonly HashSet<string> SupportedStates = new(StringComparer.OrdinalIgnoreCase) { "open", "closed", "all" };
 
    private readonly IGitHubIssueService issueService;
 
@@ -54,52 +51,27 @@ internal sealed class GitHubFindIssuesTool : ITool
          ["type"] = "object",
          ["properties"] = new JsonObject
          {
-            ["repository"] = new JsonObject
-            {
-               ["type"] = "string",
-               ["description"] = "Optional repository in owner/name format. Omit it to use the configured default."
-            },
-            ["query"] = new JsonObject
-            {
-               ["type"] = "string",
-               ["description"] = "Optional text to search for in issue titles and bodies."
-            },
-            ["state"] = new JsonObject
-            {
-               ["type"] = "string",
-               ["enum"] = new JsonArray { "open", "closed", "all" },
-               ["default"] = "open"
-            },
-            ["labels"] = new JsonObject
-            {
-               ["type"] = "array",
-               ["items"] = new JsonObject { ["type"] = "string" },
-               ["description"] = "Optional labels that every returned issue must have."
-            },
-            ["assignee"] = new JsonObject
-            {
-               ["type"] = "string",
-               ["description"] = "Optional GitHub username assigned to the issue."
-            },
-            ["limit"] = new JsonObject
-            {
-               ["type"] = "integer",
-               ["minimum"] = 1,
-               ["maximum"] = 30,
-               ["default"] = 10
-            },
+            ["repository"] =
+               new JsonObject
+               {
+                  ["type"] = "string", ["description"] = "Optional repository in owner/name format. Omit it to use the configured default."
+               },
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Optional text to search for in issue titles and bodies." },
+            ["state"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray { "open", "closed", "all" }, ["default"] = "open" },
+            ["labels"] =
+               new JsonObject
+               {
+                  ["type"] = "array",
+                  ["items"] = new JsonObject { ["type"] = "string" },
+                  ["description"] = "Optional labels that every returned issue must have."
+               },
+            ["assignee"] = new JsonObject { ["type"] = "string", ["description"] = "Optional GitHub username assigned to the issue." },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 30, ["default"] = 10 },
             ["sort"] = new JsonObject
             {
-               ["type"] = "string",
-               ["enum"] = new JsonArray { "best-match", "created", "updated", "comments" },
-               ["default"] = "updated"
+               ["type"] = "string", ["enum"] = new JsonArray { "best-match", "created", "updated", "comments" }, ["default"] = "updated"
             },
-            ["order"] = new JsonObject
-            {
-               ["type"] = "string",
-               ["enum"] = new JsonArray { "asc", "desc" },
-               ["default"] = "desc"
-            }
+            ["order"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray { "asc", "desc" }, ["default"] = "desc" }
          },
          ["additionalProperties"] = false
       };
@@ -122,16 +94,14 @@ internal sealed class GitHubFindIssuesTool : ITool
          return ToolResult.Failed(error!);
       }
 
-      if (!TryReadLimit(arguments, out var limit, out error)
-          || !TryReadLabels(arguments, out var labels, out error))
+      if (!TryReadLimit(arguments, out var limit, out error) || !TryReadLabels(arguments, out var labels, out error))
       {
          return ToolResult.Failed(error!);
       }
 
       try
       {
-         var result = await issueService.FindIssuesAsync(
-            new GitHubIssueSearchRequest(repository, query, state, labels, assignee, limit, sort, order),
+         var result = await issueService.FindIssuesAsync(new GitHubIssueSearchRequest(repository, query, state, labels, assignee, limit, sort, order),
             cancellationToken);
 
          return ToolResult.Successful(JsonSerializer.Serialize(result, JsonOptions));
@@ -164,13 +134,8 @@ internal sealed class GitHubFindIssuesTool : ITool
 
    #region Methods
 
-   private static bool TryReadEnum(
-      JsonObject arguments,
-      string propertyName,
-      string defaultValue,
-      IReadOnlySet<string> supportedValues,
-      out string value,
-      out string? error)
+   private static bool TryReadEnum(JsonObject arguments, string propertyName, string defaultValue, IReadOnlySet<string> supportedValues,
+      out string value, out string? error)
    {
       value = defaultValue;
       error = null;
@@ -180,9 +145,8 @@ internal sealed class GitHubFindIssuesTool : ITool
          return true;
       }
 
-      if (arguments[propertyName] is not JsonValue jsonValue
-          || !jsonValue.TryGetValue(out string? parsedValue)
-          || string.IsNullOrWhiteSpace(parsedValue))
+      if (arguments[propertyName] is not JsonValue jsonValue || !jsonValue.TryGetValue(out string? parsedValue)
+                                                             || string.IsNullOrWhiteSpace(parsedValue))
       {
          error = $"The argument '{propertyName}' must be a non-empty string.";
          return false;
@@ -200,10 +164,7 @@ internal sealed class GitHubFindIssuesTool : ITool
       return true;
    }
 
-   private static bool TryReadLabels(
-      JsonObject arguments,
-      out IReadOnlyList<string> labels,
-      out string? error)
+   private static bool TryReadLabels(JsonObject arguments, out IReadOnlyList<string> labels, out string? error)
    {
       labels = [];
       error = null;
@@ -223,9 +184,7 @@ internal sealed class GitHubFindIssuesTool : ITool
 
       foreach (var item in labelArray)
       {
-         if (item is not JsonValue jsonValue
-             || !jsonValue.TryGetValue(out string? label)
-             || string.IsNullOrWhiteSpace(label))
+         if (item is not JsonValue jsonValue || !jsonValue.TryGetValue(out string? label) || string.IsNullOrWhiteSpace(label))
          {
             error = "Every labels entry must be a non-empty string.";
             return false;
@@ -248,9 +207,7 @@ internal sealed class GitHubFindIssuesTool : ITool
          return true;
       }
 
-      if (arguments["limit"] is not JsonValue jsonValue
-          || !jsonValue.TryGetValue(out limit)
-          || limit is < 1 or > 30)
+      if (arguments["limit"] is not JsonValue jsonValue || !jsonValue.TryGetValue(out limit) || limit is < 1 or > 30)
       {
          error = "The argument 'limit' must be an integer between 1 and 30.";
          return false;
@@ -259,11 +216,7 @@ internal sealed class GitHubFindIssuesTool : ITool
       return true;
    }
 
-   private static bool TryReadOptionalString(
-      JsonObject arguments,
-      string propertyName,
-      out string? value,
-      out string? error)
+   private static bool TryReadOptionalString(JsonObject arguments, string propertyName, out string? value, out string? error)
    {
       value = null;
       error = null;
@@ -273,9 +226,7 @@ internal sealed class GitHubFindIssuesTool : ITool
          return true;
       }
 
-      if (arguments[propertyName] is not JsonValue jsonValue
-          || !jsonValue.TryGetValue(out value)
-          || string.IsNullOrWhiteSpace(value))
+      if (arguments[propertyName] is not JsonValue jsonValue || !jsonValue.TryGetValue(out value) || string.IsNullOrWhiteSpace(value))
       {
          error = $"The argument '{propertyName}' must be a non-empty string.";
          return false;

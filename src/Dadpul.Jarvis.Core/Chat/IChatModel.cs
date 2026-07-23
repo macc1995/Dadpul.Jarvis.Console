@@ -7,26 +7,22 @@ using Dadpul.Jarvis.Core.Conversation;
 
 public interface IChatModel
 {
-    #region Public Methods and Operators
+   #region Public Properties
 
-    int Priority { get; }
-    ISystemPrompt SystemPrompt { get; }
-    Task<bool> IsAvailableAsync(
-        CancellationToken cancellationToken);
-    IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(IReadOnlyList<ChatMessage> messages, IReadOnlyList<ChatToolDefinition> tools,
+   ChatModelDescriptor Descriptor { get; }
+
+   int Priority { get; }
+
+   ISystemPrompt SystemPrompt { get; }
+
+   #endregion
+
+   #region Public Methods and Operators
+
+   IAsyncEnumerable<ChatResponseChunk> GenerateResponseAsync(IReadOnlyList<ChatMessage> messages, IReadOnlyList<ChatToolDefinition> tools,
       CancellationToken cancellationToken);
 
-    ChatModelDescriptor Descriptor { get; }
-    #endregion
-}
+   Task<bool> IsAvailableAsync(CancellationToken cancellationToken);
 
-public sealed record ChatModelDescriptor(
-   string Name,
-   ChatModelCapabilities Capabilities,
-   bool IsFallback);
-public enum ChatModelCapabilities
-{
-    ConversationOnly = 0,
-    BasicTools = 1,
-    FullTools = 2
+   #endregion
 }

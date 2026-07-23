@@ -42,7 +42,7 @@ public sealed class MemoryService : IMemoryService
 
    #endregion
 
-   #region Public Methods and Operators
+   #region IMemoryService Members
 
    public async Task<ForgetMemoryResult> ForgetAsync(string query, CancellationToken cancellationToken)
    {
