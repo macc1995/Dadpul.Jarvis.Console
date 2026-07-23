@@ -55,6 +55,12 @@ public sealed class OllamaChatModel : IChatModel
       };
 
       using var request = new HttpRequestMessage(HttpMethod.Post, "api/chat") { Content = JsonContent.Create(requestBody) };
+      foreach (var chatMessage in messages)
+      {
+         Console.ForegroundColor = ConsoleColor.Red;
+         Console.WriteLine(chatMessage);
+         Console.ForegroundColor = ConsoleColor.White;
+      }
 
       using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
@@ -114,15 +120,21 @@ public sealed class OllamaChatModel : IChatModel
    {
       try
       {
+         //using (var client = new TcpClient("192.168.0.69", 11434))
+         //{
+         //   return true;
+         //}
+
+         //return false;
          using var response = await httpClient.GetAsync("api/tags", cancellationToken);
 
          return response.IsSuccessStatusCode;
       }
-      catch (HttpRequestException)
+      catch (HttpRequestException e)
       {
          return false;
       }
-      catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+      catch (TaskCanceledException e) when (!cancellationToken.IsCancellationRequested)
       {
          return false;
       }

@@ -86,6 +86,7 @@ namespace Dadpul.Jarvis.Console
 
       private static async Task Main(string[] args)
       {
+         Console.Clear();
          using var cancellationTokenSource = new CancellationTokenSource();
 
          //Console stuff
