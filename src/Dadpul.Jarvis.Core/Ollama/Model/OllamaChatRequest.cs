@@ -12,6 +12,8 @@ internal sealed class OllamaChatRequest
 
    [JsonPropertyName("model")] public required string Model { get; init; }
 
+   [JsonPropertyName("options")] public OllamaRequestOptions? Options { get; init; }
+
    [JsonPropertyName("stream")] public bool Stream { get; init; }
 
    [JsonPropertyName("think")] public bool Think { get; init; }
