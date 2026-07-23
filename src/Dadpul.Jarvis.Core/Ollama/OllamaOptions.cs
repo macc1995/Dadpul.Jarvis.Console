@@ -10,6 +10,8 @@ public sealed class OllamaOptions
 
    public Uri? BaseAddress { get; set; }
 
+   public int ContextSize { get; set; } = 8192;
+
    public string EmbeddingModel { get; set; } = string.Empty;
 
    public string Model { get; set; } = string.Empty;
