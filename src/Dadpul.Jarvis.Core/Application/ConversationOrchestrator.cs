@@ -300,10 +300,15 @@ public sealed class ConversationOrchestrator : IConversationOrchestrator
    private static async Task<ResponseVerificationResult> VerifyResponseAsync(IChatModel chatModel, IReadOnlyList<ChatMessage> requestMessages,
       string assistantDraft, IReadOnlyList<ToolExecutionRecord> executions, CancellationToken cancellationToken)
    {
+      var recentUserRequests = requestMessages.Where(message => message.Role == ChatRole.User)
+         .TakeLast(2)
+         .Select(message => message.Content)
+         .ToArray();
+
       var verificationPayload = JsonSerializer.Serialize(
          new
          {
-            conversationContext = requestMessages.Select(message => new { role = message.Role.ToString(), content = message.Content }),
+            userRequests = recentUserRequests,
             proposedResponse = assistantDraft,
             toolExecutions = executions.Select(execution => new
             {
