@@ -48,6 +48,7 @@ public sealed class OllamaChatModel : IChatModel
       {
          Model = options.Model,
          Messages = messages.Select(ConvertMessage).ToList(),
+         Options = new OllamaRequestOptions { ContextSize = options.ContextSize },
          Tools = tools.Select(ConvertTool).ToList(),
          Stream = true,
          Think = options.Think
@@ -57,7 +58,16 @@ public sealed class OllamaChatModel : IChatModel
 
       using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
-      response.EnsureSuccessStatusCode();
+      if (!response.IsSuccessStatusCode)
+      {
+         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+         var safeResponseBody = responseBody.Length <= 2_000 ? responseBody : responseBody[..2_000] + "…";
+
+         throw new HttpRequestException(
+            $"Ollama returned HTTP {(int)response.StatusCode} ({response.ReasonPhrase}). Response: {safeResponseBody}",
+            null,
+            response.StatusCode);
+      }
 
       await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
